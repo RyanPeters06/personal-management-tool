@@ -46,7 +46,8 @@ export default function Sidebar({ currentPage, onNavigate }) {
         <img
           src={hughWalking}
           alt=""
-          className="w-7 h-7 object-contain shrink-0"
+          className="object-contain shrink-0"
+          style={{ width: 35, height: 35, margin: '-3.5px' }}
         />
         {!collapsed && (
           <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">Life Manager</span>
