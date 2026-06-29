@@ -4,6 +4,31 @@ function generateId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
+// Deep-merges `saved` data onto `defaults`, so:
+// - Any key added to defaultData in the future automatically gets its default value
+// - All existing saved values (arrays, primitives, nested objects) are preserved
+// - Arrays are always taken from saved (user data wins, never reset)
+function mergeWithDefaults(defaults, saved) {
+  if (saved === null || saved === undefined) return defaults
+  if (typeof defaults !== 'object' || Array.isArray(defaults)) return saved ?? defaults
+  const result = { ...defaults }
+  for (const key of Object.keys(defaults)) {
+    if (key in saved) {
+      if (Array.isArray(defaults[key]) || typeof defaults[key] !== 'object' || defaults[key] === null) {
+        result[key] = saved[key]
+      } else {
+        result[key] = mergeWithDefaults(defaults[key], saved[key])
+      }
+    }
+    // if key not in saved, result[key] keeps the default — new fields are safe
+  }
+  // preserve any extra keys in saved that aren't in defaults (forward compat)
+  for (const key of Object.keys(saved)) {
+    if (!(key in defaults)) result[key] = saved[key]
+  }
+  return result
+}
+
 const defaultData = {
   todos: {
     categories: [
@@ -38,7 +63,7 @@ const defaultData = {
     darkMode: false,
     accent: 'slate',
     sidebarCollapsed: false,
-    claudeApiKey: '',
+    claudeApiKey: import.meta.env.VITE_CLAUDE_API_KEY || '',
   },
 }
 
@@ -47,28 +72,16 @@ const useStore = create((set, get) => ({
   loaded: false,
 
   loadFromDisk: async () => {
+    const apply = (saved) => {
+      const merged = mergeWithDefaults(defaultData, saved)
+      set({ ...merged, loaded: true })
+      applyTheme(merged.settings)
+    }
+
     if (window.electronAPI) {
       const saved = await window.electronAPI.loadData()
       if (saved) {
-        const merged = {
-          ...defaultData,
-          ...saved,
-          finance: {
-            ...defaultData.finance,
-            ...(saved.finance || {}),
-            moneyTracker: {
-              ...defaultData.finance.moneyTracker,
-              ...(saved.finance?.moneyTracker || {}),
-            },
-          },
-          watchlist: {
-            ...defaultData.watchlist,
-            ...(saved.watchlist || {}),
-          },
-          settings: { ...defaultData.settings, ...(saved.settings || {}) },
-        }
-        set({ ...merged, loaded: true })
-        applyTheme(merged.settings)
+        apply(saved)
       } else {
         set({ loaded: true })
         applyTheme(defaultData.settings)
@@ -77,26 +90,7 @@ const useStore = create((set, get) => ({
       const raw = localStorage.getItem('lifeManagerData')
       if (raw) {
         try {
-          const saved = JSON.parse(raw)
-          const merged = {
-            ...defaultData,
-            ...saved,
-            finance: {
-              ...defaultData.finance,
-              ...(saved.finance || {}),
-              moneyTracker: {
-                ...defaultData.finance.moneyTracker,
-                ...(saved.finance?.moneyTracker || {}),
-              },
-            },
-            watchlist: {
-              ...defaultData.watchlist,
-              ...(saved.watchlist || {}),
-            },
-            settings: { ...defaultData.settings, ...(saved.settings || {}) },
-          }
-          set({ ...merged, loaded: true })
-          applyTheme(merged.settings)
+          apply(JSON.parse(raw))
         } catch {
           set({ loaded: true })
           applyTheme(defaultData.settings)
