@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-electron/
+
+# Electron packaged output
+out/
+release/
+
+# Vite cache
+.vite/
+
+# Local environment / secrets
+.env
+.env.local
+.env.*.local
+
+# electron-store data (personal data — stored in %APPDATA% by default,
+# but ignore any local copies just in case)
+*.json.bak
+user-data/
+app-data/
+data/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor / IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Logs
+*.log
+npm-debug.log*
+
+# TypeScript cache
+*.tsbuildinfo
