@@ -16,6 +16,7 @@ import {
   Tv,
   BookOpen,
 } from 'lucide-react'
+import hughWalking from '../assets/hugh_walking.gif'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -41,7 +42,12 @@ export default function Sidebar({ currentPage, onNavigate }) {
       className={`flex flex-col shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all duration-200 ${collapsed ? 'w-14' : 'w-52'}`}
     >
       {/* Logo / Title */}
-      <div className={`flex items-center px-3 py-4 border-b border-slate-100 dark:border-slate-700 ${collapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center gap-2 px-3 py-4 border-b border-slate-100 dark:border-slate-700 ${collapsed ? 'justify-center' : ''}`}>
+        <img
+          src={hughWalking}
+          alt=""
+          className="w-7 h-7 object-contain shrink-0"
+        />
         {!collapsed && (
           <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">Life Manager</span>
         )}
