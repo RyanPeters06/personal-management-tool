@@ -5,6 +5,8 @@ import {
   DollarSign,
   Calendar,
   Target,
+  Clock,
+  Sparkles,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -16,6 +18,8 @@ const NAV = [
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'goals', label: 'Goals & Projects', icon: Target },
+  { id: 'tracking', label: 'Tracking', icon: Clock },
+  { id: 'ai-import', label: 'AI Import', icon: Sparkles },
 ]
 
 export default function Sidebar({ currentPage, onNavigate }) {

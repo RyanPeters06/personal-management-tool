@@ -19,16 +19,26 @@ const defaultData = {
     subscriptions: [],
     income: 0,
     expenses: [],
+    moneyTracker: {
+      owed: [],
+      incoming: [],
+    },
   },
   calendar: {
     events: [],
   },
   goals: [],
   projects: [],
+  deadlines: [],
+  watchlist: {
+    games: [],
+    shows: [],
+  },
   settings: {
     darkMode: false,
     accent: 'slate',
     sidebarCollapsed: false,
+    claudeApiKey: '',
   },
 }
 
@@ -40,10 +50,21 @@ const useStore = create((set, get) => ({
     if (window.electronAPI) {
       const saved = await window.electronAPI.loadData()
       if (saved) {
-        // merge settings defaults in case new fields were added
         const merged = {
           ...defaultData,
           ...saved,
+          finance: {
+            ...defaultData.finance,
+            ...(saved.finance || {}),
+            moneyTracker: {
+              ...defaultData.finance.moneyTracker,
+              ...(saved.finance?.moneyTracker || {}),
+            },
+          },
+          watchlist: {
+            ...defaultData.watchlist,
+            ...(saved.watchlist || {}),
+          },
           settings: { ...defaultData.settings, ...(saved.settings || {}) },
         }
         set({ ...merged, loaded: true })
@@ -53,7 +74,6 @@ const useStore = create((set, get) => ({
         applyTheme(defaultData.settings)
       }
     } else {
-      // Running in browser preview without Electron
       const raw = localStorage.getItem('lifeManagerData')
       if (raw) {
         try {
@@ -61,6 +81,18 @@ const useStore = create((set, get) => ({
           const merged = {
             ...defaultData,
             ...saved,
+            finance: {
+              ...defaultData.finance,
+              ...(saved.finance || {}),
+              moneyTracker: {
+                ...defaultData.finance.moneyTracker,
+                ...(saved.finance?.moneyTracker || {}),
+              },
+            },
+            watchlist: {
+              ...defaultData.watchlist,
+              ...(saved.watchlist || {}),
+            },
             settings: { ...defaultData.settings, ...(saved.settings || {}) },
           }
           set({ ...merged, loaded: true })
@@ -84,6 +116,8 @@ const useStore = create((set, get) => ({
       calendar: s.calendar,
       goals: s.goals,
       projects: s.projects,
+      deadlines: s.deadlines,
+      watchlist: s.watchlist,
       settings: s.settings,
     }
     if (window.electronAPI) {
@@ -252,6 +286,91 @@ const useStore = create((set, get) => ({
     get().save()
   },
 
+  // ── MONEY TRACKER ──
+  addOwed: (entry) => {
+    const item = { id: generateId(), received: false, ...entry }
+    set((s) => ({
+      finance: {
+        ...s.finance,
+        moneyTracker: {
+          ...s.finance.moneyTracker,
+          owed: [...s.finance.moneyTracker.owed, item],
+        },
+      },
+    }))
+    get().save()
+  },
+
+  updateOwed: (id, patch) => {
+    set((s) => ({
+      finance: {
+        ...s.finance,
+        moneyTracker: {
+          ...s.finance.moneyTracker,
+          owed: s.finance.moneyTracker.owed.map((o) =>
+            o.id === id ? { ...o, ...patch } : o
+          ),
+        },
+      },
+    }))
+    get().save()
+  },
+
+  deleteOwed: (id) => {
+    set((s) => ({
+      finance: {
+        ...s.finance,
+        moneyTracker: {
+          ...s.finance.moneyTracker,
+          owed: s.finance.moneyTracker.owed.filter((o) => o.id !== id),
+        },
+      },
+    }))
+    get().save()
+  },
+
+  addIncoming: (entry) => {
+    const item = { id: generateId(), received: false, ...entry }
+    set((s) => ({
+      finance: {
+        ...s.finance,
+        moneyTracker: {
+          ...s.finance.moneyTracker,
+          incoming: [...s.finance.moneyTracker.incoming, item],
+        },
+      },
+    }))
+    get().save()
+  },
+
+  updateIncoming: (id, patch) => {
+    set((s) => ({
+      finance: {
+        ...s.finance,
+        moneyTracker: {
+          ...s.finance.moneyTracker,
+          incoming: s.finance.moneyTracker.incoming.map((i) =>
+            i.id === id ? { ...i, ...patch } : i
+          ),
+        },
+      },
+    }))
+    get().save()
+  },
+
+  deleteIncoming: (id) => {
+    set((s) => ({
+      finance: {
+        ...s.finance,
+        moneyTracker: {
+          ...s.finance.moneyTracker,
+          incoming: s.finance.moneyTracker.incoming.filter((i) => i.id !== id),
+        },
+      },
+    }))
+    get().save()
+  },
+
   // ── CALENDAR ──
   addEvent: (event) => {
     const newEvent = { id: generateId(), ...event }
@@ -372,6 +491,104 @@ const useStore = create((set, get) => ({
           ? { ...p, subtasks: p.subtasks.filter((st) => st.id !== subtaskId) }
           : p
       ),
+    }))
+    get().save()
+  },
+
+  // ── DEADLINES ──
+  addDeadline: (deadline) => {
+    const item = {
+      id: generateId(),
+      title: deadline.title,
+      endDate: deadline.endDate,
+      notes: deadline.notes || '',
+      category: deadline.category || 'other',
+      done: false,
+      createdAt: new Date().toISOString(),
+    }
+    set((s) => ({ deadlines: [...s.deadlines, item] }))
+    get().save()
+  },
+
+  updateDeadline: (id, patch) => {
+    set((s) => ({
+      deadlines: s.deadlines.map((d) => (d.id === id ? { ...d, ...patch } : d)),
+    }))
+    get().save()
+  },
+
+  deleteDeadline: (id) => {
+    set((s) => ({ deadlines: s.deadlines.filter((d) => d.id !== id) }))
+    get().save()
+  },
+
+  // ── WATCHLIST ──
+  addGame: (game) => {
+    const item = {
+      id: generateId(),
+      title: game.title,
+      platform: game.platform || '',
+      status: game.status || 'want',
+      notes: game.notes || '',
+      addedAt: new Date().toISOString(),
+    }
+    set((s) => ({
+      watchlist: { ...s.watchlist, games: [...s.watchlist.games, item] },
+    }))
+    get().save()
+  },
+
+  updateGame: (id, patch) => {
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        games: s.watchlist.games.map((g) => (g.id === id ? { ...g, ...patch } : g)),
+      },
+    }))
+    get().save()
+  },
+
+  deleteGame: (id) => {
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        games: s.watchlist.games.filter((g) => g.id !== id),
+      },
+    }))
+    get().save()
+  },
+
+  addShow: (show) => {
+    const item = {
+      id: generateId(),
+      title: show.title,
+      service: show.service || '',
+      status: show.status || 'want',
+      notes: show.notes || '',
+      addedAt: new Date().toISOString(),
+    }
+    set((s) => ({
+      watchlist: { ...s.watchlist, shows: [...s.watchlist.shows, item] },
+    }))
+    get().save()
+  },
+
+  updateShow: (id, patch) => {
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        shows: s.watchlist.shows.map((sh) => (sh.id === id ? { ...sh, ...patch } : sh)),
+      },
+    }))
+    get().save()
+  },
+
+  deleteShow: (id) => {
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        shows: s.watchlist.shows.filter((sh) => sh.id !== id),
+      },
     }))
     get().save()
   },

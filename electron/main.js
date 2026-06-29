@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const Store = require('electron-store')
 
@@ -49,4 +49,14 @@ ipcMain.handle('load-data', () => {
 ipcMain.handle('save-data', (_, data) => {
   store.set('lifeManagerData', data)
   return true
+})
+
+ipcMain.handle('open-file', async () => {
+  const { canceled, filePaths } = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [{ name: 'Text Files', extensions: ['txt', 'md'] }],
+  })
+  if (canceled || filePaths.length === 0) return null
+  const fs = require('fs')
+  return fs.readFileSync(filePaths[0], 'utf-8')
 })

@@ -6,6 +6,8 @@ import TodoLists from './pages/TodoLists'
 import Finance from './pages/Finance'
 import CalendarPage from './pages/CalendarPage'
 import GoalsProjects from './pages/GoalsProjects'
+import Tracking from './pages/Tracking'
+import AIImport from './pages/AIImport'
 import Settings from './pages/Settings'
 
 const PAGES = {
@@ -14,6 +16,8 @@ const PAGES = {
   finance: Finance,
   calendar: CalendarPage,
   goals: GoalsProjects,
+  tracking: Tracking,
+  'ai-import': AIImport,
   settings: Settings,
 }
 

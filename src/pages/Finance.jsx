@@ -4,7 +4,7 @@ import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
-import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, DollarSign } from 'lucide-react'
+import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight, DollarSign, Check } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 const SUB_CATEGORIES = ['streaming', 'tools', 'utilities', 'health', 'food', 'entertainment', 'other']
@@ -128,14 +128,81 @@ function ExpenseForm({ onSave, onCancel }) {
   )
 }
 
+function MoneyEntryForm({ type, onSave, onCancel }) {
+  const isOwed = type === 'owed'
+  const [form, setForm] = useState(
+    isOwed
+      ? { person: '', amount: '', reason: '', dueDate: '' }
+      : { source: '', amount: '', reason: '', expectedDate: '' }
+  )
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const valid = isOwed ? (form.person && form.amount) : (form.source && form.amount)
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="col-span-2">
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">
+            {isOwed ? 'Person' : 'Source'}
+          </label>
+          <input
+            autoFocus
+            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+            placeholder={isOwed ? 'e.g. John' : 'e.g. Amazon cashback'}
+            value={isOwed ? form.person : form.source}
+            onChange={(e) => set(isOwed ? 'person' : 'source', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Amount ($)</label>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+            value={form.amount}
+            onChange={(e) => set('amount', e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">
+            {isOwed ? 'Due Date (optional)' : 'Expected Date (optional)'}
+          </label>
+          <input
+            type="date"
+            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+            value={isOwed ? form.dueDate : form.expectedDate}
+            onChange={(e) => set(isOwed ? 'dueDate' : 'expectedDate', e.target.value)}
+          />
+        </div>
+        <div className="col-span-2">
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Reason / Notes (optional)</label>
+          <input
+            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+            value={form.reason}
+            onChange={(e) => set('reason', e.target.value)}
+          />
+        </div>
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSave(form)} disabled={!valid}>Save</Button>
+      </div>
+    </div>
+  )
+}
+
 export default function Finance() {
-  const { finance, addSubscription, updateSubscription, deleteSubscription, setIncome, addExpense, deleteExpense } = useStore()
+  const { finance, addSubscription, updateSubscription, deleteSubscription, setIncome, addExpense, deleteExpense,
+    addOwed, updateOwed, deleteOwed, addIncoming, updateIncoming, deleteIncoming } = useStore()
   const [tab, setTab] = useState('subscriptions')
   const [showAddSub, setShowAddSub] = useState(false)
   const [editSub, setEditSub] = useState(null)
   const [showAddExp, setShowAddExp] = useState(false)
   const [editingIncome, setEditingIncome] = useState(false)
   const [incomeDraft, setIncomeDraft] = useState('')
+  const [showAddOwed, setShowAddOwed] = useState(false)
+  const [showAddIncoming, setShowAddIncoming] = useState(false)
 
   const monthlyTotal = useMemo(() =>
     finance.subscriptions
@@ -162,7 +229,7 @@ export default function Finance() {
 
       {/* Tabs */}
       <div className="flex rounded-lg border border-slate-200 dark:border-slate-600 overflow-hidden text-sm mb-6 w-fit">
-        {['subscriptions', 'budget'].map((t) => (
+        {['subscriptions', 'budget', 'money'].map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -171,7 +238,7 @@ export default function Finance() {
             }`}
             style={tab === t ? { backgroundColor: 'var(--accent-500)' } : {}}
           >
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {t === 'money' ? 'Money Tracker' : t.charAt(0).toUpperCase() + t.slice(1)}
           </button>
         ))}
       </div>
@@ -298,6 +365,110 @@ export default function Finance() {
             ))}
           </div>
         </>
+      )}
+
+      {tab === 'money' && (
+        <>
+          {/* People who owe me */}
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">People Who Owe Me</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Outstanding: ${(finance.moneyTracker?.owed || []).filter(o => !o.received).reduce((s, o) => s + (parseFloat(o.amount) || 0), 0).toFixed(2)}
+                </p>
+              </div>
+              <Button size="xs" onClick={() => setShowAddOwed(true)}>
+                <Plus size={13} /> Add
+              </Button>
+            </div>
+            {(finance.moneyTracker?.owed || []).length === 0 && (
+              <p className="text-sm text-slate-400 italic text-center py-4">No one owes you money</p>
+            )}
+            <div className="space-y-2">
+              {(finance.moneyTracker?.owed || []).map((o) => (
+                <div key={o.id} className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 ${o.received ? 'opacity-50' : ''}`}>
+                  <button
+                    onClick={() => updateOwed(o.id, { received: !o.received })}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${o.received ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-500'}`}
+                    style={o.received ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
+                  >
+                    {o.received && <Check size={11} />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium text-slate-700 dark:text-slate-200 ${o.received ? 'line-through' : ''}`}>{o.person}</p>
+                    <p className="text-xs text-slate-400">
+                      {o.reason && `${o.reason} · `}
+                      {o.dueDate && `Due ${format(parseISO(o.dueDate), 'MMM d')}`}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">${parseFloat(o.amount).toFixed(2)}</span>
+                  <button onClick={() => deleteOwed(o.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Incoming money */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">Money Coming My Way</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Pending: ${(finance.moneyTracker?.incoming || []).filter(i => !i.received).reduce((s, i) => s + (parseFloat(i.amount) || 0), 0).toFixed(2)}
+                </p>
+              </div>
+              <Button size="xs" onClick={() => setShowAddIncoming(true)}>
+                <Plus size={13} /> Add
+              </Button>
+            </div>
+            {(finance.moneyTracker?.incoming || []).length === 0 && (
+              <p className="text-sm text-slate-400 italic text-center py-4">No expected money</p>
+            )}
+            <div className="space-y-2">
+              {(finance.moneyTracker?.incoming || []).map((i) => (
+                <div key={i.id} className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 ${i.received ? 'opacity-50' : ''}`}>
+                  <button
+                    onClick={() => updateIncoming(i.id, { received: !i.received })}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${i.received ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-500'}`}
+                    style={i.received ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
+                  >
+                    {i.received && <Check size={11} />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium text-slate-700 dark:text-slate-200 ${i.received ? 'line-through' : ''}`}>{i.source}</p>
+                    <p className="text-xs text-slate-400">
+                      {i.reason && `${i.reason} · `}
+                      {i.expectedDate && `Expected ${format(parseISO(i.expectedDate), 'MMM d')}`}
+                    </p>
+                  </div>
+                  <span className="text-sm font-semibold text-green-600 dark:text-green-400">${parseFloat(i.amount).toFixed(2)}</span>
+                  <button onClick={() => deleteIncoming(i.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
+      {showAddOwed && (
+        <Modal title="Add — Person Who Owes Me" onClose={() => setShowAddOwed(false)} size="lg">
+          <MoneyEntryForm
+            type="owed"
+            onSave={(f) => { addOwed(f); setShowAddOwed(false) }}
+            onCancel={() => setShowAddOwed(false)}
+          />
+        </Modal>
+      )}
+
+      {showAddIncoming && (
+        <Modal title="Add — Expected Money" onClose={() => setShowAddIncoming(false)} size="lg">
+          <MoneyEntryForm
+            type="incoming"
+            onSave={(f) => { addIncoming(f); setShowAddIncoming(false) }}
+            onCancel={() => setShowAddIncoming(false)}
+          />
+        </Modal>
       )}
 
       {showAddSub && (
