@@ -269,11 +269,11 @@ export default function Finance() {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{sub.name}</p>
-                    <Badge label={sub.category} color={CAT_COLORS[sub.category] || 'slate'} />
+                    <Badge label={sub.category ? sub.category.charAt(0).toUpperCase() + sub.category.slice(1) : ''} color={CAT_COLORS[sub.category] || 'slate'} />
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     ${parseFloat(sub.cost).toFixed(2)} / {sub.cycle}
-                    {sub.renewalDate && (() => { const d = String(sub.renewalDate); const ord = ['11','12','13'].includes(d) ? 'th' : d.endsWith('1') ? 'st' : d.endsWith('2') ? 'nd' : d.endsWith('3') ? 'rd' : 'th'; const month = format(new Date(), 'MMMM'); return ` · Renews on the ${d}${ord} of ${month}` })()}
+                    {sub.renewalDate && (() => { const d = String(sub.renewalDate); const ord = ['11','12','13'].includes(d) ? 'th' : d.endsWith('1') ? 'st' : d.endsWith('2') ? 'nd' : d.endsWith('3') ? 'rd' : 'th'; const today = new Date(); const renewDay = parseInt(d, 10); const useNext = renewDay <= today.getDate(); const renewMonth = new Date(today.getFullYear(), today.getMonth() + (useNext ? 1 : 0), 1); return ` · Renews on the ${d}${ord} of ${format(renewMonth, 'MMMM')}` })()}
                   </p>
                 </div>
                 <button
