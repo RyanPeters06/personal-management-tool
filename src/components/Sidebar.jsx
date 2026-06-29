@@ -50,7 +50,7 @@ export default function Sidebar({ currentPage, onNavigate }) {
           style={{ width: 44, height: 44, margin: '-8px' }}
         />
         {!collapsed && (
-          <span className="font-pixel font-semibold text-slate-700 dark:text-slate-200 truncate ml-3" style={{ fontSize: 24 }}>Life Manager</span>
+          <span className="font-pixel font-semibold text-slate-700 dark:text-slate-200 whitespace-nowrap ml-3" style={{ fontSize: 36, lineHeight: '24px' }}>Life Manager</span>
         )}
       </div>
 
