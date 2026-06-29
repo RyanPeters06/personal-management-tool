@@ -12,11 +12,12 @@ const ACCENTS = [
 ]
 
 export default function Settings() {
-  const { settings, updateSettings, addCustomTag, removeCustomTag, wipeAllData, restoreFromBackup } = useStore()
+  const { settings, updateSettings, addCustomTag, removeCustomTag, wipeAllData, wipeSectionData, restoreFromBackup } = useStore()
   const [showKey, setShowKey] = useState(false)
   const [keyDraft, setKeyDraft] = useState(settings.claudeApiKey || '')
   const [newTag, setNewTag] = useState('')
   const [confirmWipe, setConfirmWipe] = useState(false)
+  const [confirmSection, setConfirmSection] = useState(null)
   const [restoreError, setRestoreError] = useState('')
   const [restoreSuccess, setRestoreSuccess] = useState(false)
 
@@ -197,6 +198,46 @@ export default function Settings() {
         {restoreError && (
           <p className="text-xs text-red-500 mt-3">{restoreError}</p>
         )}
+      </div>
+
+      {/* Clear Section */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Clear a Section</p>
+        <p className="text-xs text-slate-400 mb-3">Permanently delete all data from one section only. Click once to arm, click again to confirm.</p>
+        <div className="flex flex-wrap gap-2">
+          {[
+            { key: 'tasks', label: 'Tasks' },
+            { key: 'projects', label: 'Projects & Deadlines' },
+            { key: 'ideas', label: 'Ideas' },
+            { key: 'wantList', label: 'Want List' },
+            { key: 'journal', label: 'Journal' },
+            { key: 'workouts', label: 'Workouts' },
+            { key: 'games', label: 'Games' },
+            { key: 'shows', label: 'Shows' },
+            { key: 'calendar', label: 'Calendar' },
+            { key: 'subscriptions', label: 'Subscriptions' },
+          ].map(({ key, label }) => (
+            <button
+              key={key}
+              onClick={() => {
+                if (confirmSection === key) {
+                  wipeSectionData(key)
+                  setConfirmSection(null)
+                } else {
+                  setConfirmSection(key)
+                  setTimeout(() => setConfirmSection(null), 3000)
+                }
+              }}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
+                confirmSection === key
+                  ? 'bg-red-500 text-white border-red-500'
+                  : 'text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-red-300 hover:text-red-500 dark:hover:text-red-400'
+              }`}
+            >
+              {confirmSection === key ? `Confirm clear ${label}` : label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Wipe Data */}

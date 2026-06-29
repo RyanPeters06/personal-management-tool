@@ -490,6 +490,9 @@ export default function AIImport() {
   const [answers, setAnswers] = useState({})
   const [flaggedChoices, setFlaggedChoices] = useState({})
   const [confirmedRemovals, setConfirmedRemovals] = useState({})
+  const [refineText, setRefineText] = useState('')
+  const [refineLoading, setRefineLoading] = useState(false)
+  const [refineError, setRefineError] = useState('')
 
   const hasKey = !!settings.claudeApiKey
 
@@ -677,6 +680,34 @@ export default function AIImport() {
     setPhase('done')
   }
 
+  const refineItems = async () => {
+    if (!refineText.trim() || !parsed) return
+    setRefineLoading(true)
+    setRefineError('')
+    try {
+      const client = new Anthropic({ apiKey: settings.claudeApiKey, dangerouslyAllowBrowser: true })
+      const message = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        system: `You are editing a pending import payload for a life manager app. The user has already parsed their data into the JSON structure below and wants to refine it before accepting. Apply the user's instruction to the JSON and return the updated JSON in exactly the same format. Only change what the user asks — preserve everything else. Return ONLY the JSON object, no explanation, no code fences.`,
+        messages: [
+          { role: 'user', content: `Current pending data:\n${JSON.stringify(parsed, null, 2)}\n\nInstruction: ${refineText.trim()}` },
+        ],
+      })
+      const raw = message.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+      const updated = JSON.parse(raw)
+      setParsed(updated)
+      const initRemovals = {}
+      updated.removals?.forEach((_, i) => { initRemovals[i] = true })
+      setConfirmedRemovals(initRemovals)
+      setRefineText('')
+    } catch (e) {
+      setRefineError(e.message || 'Something went wrong.')
+    } finally {
+      setRefineLoading(false)
+    }
+  }
+
   const reset = () => {
     setText('')
     setParsed(null)
@@ -684,6 +715,8 @@ export default function AIImport() {
     setAnswers({})
     setFlaggedChoices({})
     setConfirmedRemovals({})
+    setRefineText('')
+    setRefineError('')
     setPhase('input')
   }
 
@@ -960,6 +993,29 @@ export default function AIImport() {
               <SectionPreview title="Money Coming My Way" count={d.moneyTracker?.incoming?.length || 0}>
                 {d.moneyTracker?.incoming?.map((inc, i) => <PreviewItem key={i} text={`${inc.source} — $${inc.amount}`} sub={inc.reason} />)}
               </SectionPreview>
+
+              {/* Refine with AI */}
+              <div className="mt-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Refine with AI</p>
+                <p className="text-xs text-slate-400 mb-3">Tell Claude to edit these items before you accept them — e.g. "expand Pokemon games to list specific titles" or "change the priority of task X to high".</p>
+                <textarea
+                  className="w-full h-20 text-sm bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 outline-none resize-none placeholder-slate-400 focus:border-slate-400 mb-2"
+                  placeholder="Describe what you want changed..."
+                  value={refineText}
+                  onChange={(e) => setRefineText(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); refineItems() } }}
+                />
+                {refineError && <p className="text-xs text-red-500 mb-2">{refineError}</p>}
+                <div className="flex justify-end">
+                  <Button onClick={refineItems} disabled={!refineText.trim() || refineLoading} variant="secondary">
+                    {refineLoading ? (
+                      <><svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg> Refining...</>
+                    ) : (
+                      <><Sparkles size={13} /> Refine</>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </>
           )}
 

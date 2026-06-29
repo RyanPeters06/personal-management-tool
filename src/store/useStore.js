@@ -776,6 +776,27 @@ const useStore = create((set, get) => ({
     set({ ...defaultData, settings: { ...get().settings }, loaded: true })
     get().save()
   },
+
+  // ── WIPE SECTION ──
+  wipeSectionData: (section) => {
+    const s = get()
+    const patches = {
+      tasks: () => set({ tasks: [] }),
+      projects: () => set({ projects: [], deadlines: [] }),
+      deadlines: () => set({ deadlines: [] }),
+      ideas: () => set({ ideas: [] }),
+      wantList: () => set({ wantList: [] }),
+      journal: () => set({ journal: { entries: [] } }),
+      workouts: () => set({ workouts: { sessions: [], logs: [] } }),
+      games: () => set({ watchlist: { ...s.watchlist, games: [] } }),
+      shows: () => set({ watchlist: { ...s.watchlist, shows: [] } }),
+      calendar: () => set({ calendar: { events: [] } }),
+      subscriptions: () => set({ finance: { ...s.finance, subscriptions: [] } }),
+      finance: () => set({ finance: { ...defaultData.finance, notes: s.finance.notes } }),
+    }
+    patches[section]?.()
+    get().save()
+  },
 }))
 
 function applyTheme(settings) {
