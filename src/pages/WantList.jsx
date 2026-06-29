@@ -3,11 +3,8 @@ import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
-import Badge from '../components/shared/Badge'
 import TagSelect, { tagColor } from '../components/shared/TagSelect'
 import { Plus, Trash2, Pencil, ExternalLink, ShoppingCart, X, Check, RotateCcw } from 'lucide-react'
-
-const PRIORITY_COLORS = { high: 'red', medium: 'yellow', low: 'slate' }
 
 function OptionRow({ option, onChange, onDelete }) {
   return (
@@ -37,7 +34,7 @@ function OptionRow({ option, onChange, onDelete }) {
 
 function WantItemForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(
-    initial || { title: '', notes: '', options: [], priority: 'medium', timeframe: 'soon', tags: [], purchased: false }
+    initial || { title: '', notes: '', options: [], timeframe: 'soon', tags: [], purchased: false }
   )
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -66,30 +63,16 @@ function WantItemForm({ initial, onSave, onCancel }) {
           onChange={(e) => set('notes', e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Priority</label>
-          <select
-            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
-            value={form.priority}
-            onChange={(e) => set('priority', e.target.value)}
-          >
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-        <div>
-          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Timeframe</label>
-          <select
-            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
-            value={form.timeframe || 'soon'}
-            onChange={(e) => set('timeframe', e.target.value)}
-          >
-            <option value="soon">Soon — actively looking</option>
-            <option value="eventually">Eventually — next few months</option>
-          </select>
-        </div>
+      <div>
+        <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Timeframe</label>
+        <select
+          className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+          value={form.timeframe || 'soon'}
+          onChange={(e) => set('timeframe', e.target.value)}
+        >
+          <option value="soon">Soon — actively looking</option>
+          <option value="eventually">Eventually — next few months</option>
+        </select>
       </div>
       <div>
         <div className="flex items-center justify-between mb-2">
@@ -134,7 +117,6 @@ function WantItemCard({ item, customTagColors, onEdit, onDelete, onMarkBought, o
             <p className={`text-sm font-medium min-w-0 truncate ${item.purchased ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
               {item.title}
             </p>
-            <Badge color={PRIORITY_COLORS[item.priority]} label={item.priority} />
           </div>
           {item.notes && <p className="text-xs text-slate-400 mt-1">{item.notes}</p>}
           {item.tags?.length > 0 && (
@@ -207,12 +189,14 @@ export default function WantList() {
   const [showAdd, setShowAdd] = useState(false)
   const [editItem, setEditItem] = useState(null)
 
-  const filtered = wantList.filter((i) => {
-    if (filter === 'soon') return !i.purchased && (i.timeframe === 'soon' || !i.timeframe)
-    if (filter === 'eventually') return !i.purchased && i.timeframe === 'eventually'
-    if (filter === 'purchased') return i.purchased
-    return true
-  })
+  const soon       = wantList.filter((i) => !i.purchased && (i.timeframe === 'soon' || !i.timeframe))
+  const eventually = wantList.filter((i) => !i.purchased && i.timeframe === 'eventually')
+  const purchased  = wantList.filter((i) => i.purchased)
+
+  const filtered = filter === 'soon' ? soon
+    : filter === 'eventually' ? eventually
+    : filter === 'purchased' ? purchased
+    : null // null = show grouped "all" view
 
   const cardProps = (item) => ({
     key: item.id,
@@ -223,6 +207,8 @@ export default function WantList() {
     onMarkBought: () => updateWantItem(item.id, { purchased: true }),
     onUndo: () => updateWantItem(item.id, { purchased: false }),
   })
+
+  const isEmpty = soon.length + eventually.length + purchased.length === 0
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -251,16 +237,44 @@ export default function WantList() {
         ))}
       </div>
 
-      {filtered.length === 0 && (
-        <div className="text-center py-16">
-          <ShoppingCart size={32} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-400">Nothing here yet.</p>
-        </div>
+      {filter === 'all' ? (
+        isEmpty ? (
+          <div className="text-center py-16">
+            <ShoppingCart size={32} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-sm text-slate-400">Your want list is empty.</p>
+          </div>
+        ) : (
+          <>
+            {soon.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Soon</p>
+                <div className="space-y-3">{soon.map((item) => <WantItemCard {...cardProps(item)} />)}</div>
+              </div>
+            )}
+            {eventually.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Eventually</p>
+                <div className="space-y-3">{eventually.map((item) => <WantItemCard {...cardProps(item)} />)}</div>
+              </div>
+            )}
+            {purchased.length > 0 && (
+              <div className="mb-6">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Bought</p>
+                <div className="space-y-3">{purchased.map((item) => <WantItemCard {...cardProps(item)} />)}</div>
+              </div>
+            )}
+          </>
+        )
+      ) : (
+        filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <ShoppingCart size={32} className="text-slate-300 mx-auto mb-3" />
+            <p className="text-sm text-slate-400">Nothing here yet.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">{filtered.map((item) => <WantItemCard {...cardProps(item)} />)}</div>
+        )
       )}
-
-      <div className="space-y-3">
-        {filtered.map((item) => <WantItemCard {...cardProps(item)} />)}
-      </div>
 
       {showAdd && (
         <Modal title="Add to Want List" onClose={() => setShowAdd(false)}>
