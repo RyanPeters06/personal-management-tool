@@ -2,14 +2,6 @@
 import useStore from '../store/useStore'
 import { Plus, Trash2, Lightbulb, Search } from 'lucide-react'
 
-const CATEGORY_COLORS = {
-  startup: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
-  build: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
-  creative: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300',
-  other: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
-}
-
-const CATEGORIES = ['startup', 'build', 'creative', 'other']
 
 export default function Ideas() {
   const { ideas, addIdea, updateIdea, deleteIdea } = useStore()
@@ -158,24 +150,11 @@ export default function Ideas() {
       <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
         {selected ? (
           <div className="flex-1 overflow-y-auto px-10 py-8 max-w-3xl w-full mx-auto">
-            <div className="flex items-center gap-2 mb-5">
-              <select
-                value={selected.category || 'other'}
-                onChange={(e) => updateIdea(selected.id, { category: e.target.value })}
-                className={`text-xs px-2.5 py-1 rounded-full border-0 outline-none font-medium cursor-pointer ${CATEGORY_COLORS[selected.category || 'other']}`}
-              >
-                {CATEGORIES.map((c) => (
-                  <option key={c} value={c} className="bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100">
-                    {c.charAt(0).toUpperCase() + c.slice(1)}
-                  </option>
-                ))}
-              </select>
-              {selected.createdAt && (
-                <span className="text-xs text-slate-400">
-                  {new Date(selected.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-              )}
-            </div>
+            {selected.createdAt && (
+              <p className="text-xs text-slate-400 mb-4">
+                {new Date(selected.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </p>
+            )}
 
             <input
               ref={titleRef}
