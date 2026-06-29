@@ -5,7 +5,7 @@ import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
 import { Plus, Trash2, Pencil, ToggleLeft, ToggleRight } from 'lucide-react'
-import { format, parseISO } from 'date-fns'
+import { format } from 'date-fns'
 
 const SUB_CATEGORIES = ['streaming', 'tools', 'utilities', 'health', 'food', 'entertainment', 'other']
 const CAT_COLORS = { streaming: 'purple', tools: 'blue', utilities: 'orange', health: 'green', food: 'yellow', entertainment: 'pink', other: 'slate' }
@@ -53,10 +53,13 @@ function SubForm({ initial, onSave, onCancel }) {
           </select>
         </div>
         <div>
-          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Renewal Date</label>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Renews on day of month</label>
           <input
-            type="date"
+            type="number"
+            min="1"
+            max="31"
             className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+            placeholder="e.g. 15"
             value={form.renewalDate}
             onChange={(e) => set('renewalDate', e.target.value)}
           />
@@ -270,7 +273,7 @@ export default function Finance() {
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     ${parseFloat(sub.cost).toFixed(2)} / {sub.cycle}
-                    {sub.renewalDate && ` · Renews ${format(parseISO(sub.renewalDate), 'MMM d, yyyy')}`}
+                    {sub.renewalDate && ` · Renews on the ${sub.renewalDate}${['11','12','13'].includes(String(sub.renewalDate)) ? 'th' : String(sub.renewalDate).endsWith('1') ? 'st' : String(sub.renewalDate).endsWith('2') ? 'nd' : String(sub.renewalDate).endsWith('3') ? 'rd' : 'th'}`}
                   </p>
                 </div>
                 <button
