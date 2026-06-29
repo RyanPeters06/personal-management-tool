@@ -335,13 +335,20 @@ class SafeMarkdown extends Component {
 
 // ─── Chat mode ────────────────────────────────────────────────────────────────
 
+// Session-persistent chat history (survives tab switches, resets on app close)
+const chatSession = { messages: [], input: '' }
+
 function ChatMode({ settings, storeState }) {
-  const [messages, setMessages] = useState([])
-  const [input, setInput] = useState('')
+  const [messages, setMessages] = useState(chatSession.messages)
+  const [input, setInput] = useState(chatSession.input)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const bottomRef = useRef(null)
   const inputRef = useRef(null)
+
+  // Keep the module-level session in sync so navigating away doesn't lose the chat
+  useEffect(() => { chatSession.messages = messages }, [messages])
+  useEffect(() => { chatSession.input = input }, [input])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -520,7 +527,10 @@ Format it clearly with sections and bullet points. Be concise.`)}
 }
 
 // ─── Session-persistent draft state (survives navigation, resets on app close) ─
-const sessionDraft = { mode: 'chat', text: '' }
+const sessionDraft = {
+  mode: 'chat', text: '',
+  phase: 'input', parsed: null, answers: {}, flaggedChoices: {}, confirmedRemovals: {},
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -540,14 +550,21 @@ export default function AIImport() {
   const persistText = (t) => { sessionDraft.text = t; setText(t) }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [phase, setPhase] = useState('input') // input | clarify | preview | done
-  const [parsed, setParsed] = useState(null)
-  const [answers, setAnswers] = useState({})
-  const [flaggedChoices, setFlaggedChoices] = useState({})
-  const [confirmedRemovals, setConfirmedRemovals] = useState({})
+  const [phase, setPhase] = useState(sessionDraft.phase) // input | clarify | preview | done
+  const [parsed, setParsed] = useState(sessionDraft.parsed)
+  const [answers, setAnswers] = useState(sessionDraft.answers)
+  const [flaggedChoices, setFlaggedChoices] = useState(sessionDraft.flaggedChoices)
+  const [confirmedRemovals, setConfirmedRemovals] = useState(sessionDraft.confirmedRemovals)
   const [refineText, setRefineText] = useState('')
   const [refineLoading, setRefineLoading] = useState(false)
   const [refineError, setRefineError] = useState('')
+
+  // Persist import progress so switching tabs mid-flow doesn't lose it
+  useEffect(() => { sessionDraft.phase = phase }, [phase])
+  useEffect(() => { sessionDraft.parsed = parsed }, [parsed])
+  useEffect(() => { sessionDraft.answers = answers }, [answers])
+  useEffect(() => { sessionDraft.flaggedChoices = flaggedChoices }, [flaggedChoices])
+  useEffect(() => { sessionDraft.confirmedRemovals = confirmedRemovals }, [confirmedRemovals])
 
   const hasKey = !!settings.claudeApiKey
 
@@ -827,7 +844,7 @@ export default function AIImport() {
           <MessageSquare size={14} /> Chat
         </button>
         <button
-          onClick={() => { persistMode('import'); reset() }}
+          onClick={() => persistMode('import')}
           className={`flex items-center gap-2 px-4 py-2 transition-colors ${mode === 'import' ? 'text-white font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           style={mode === 'import' ? { backgroundColor: 'var(--accent-500)' } : {}}
         >
