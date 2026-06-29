@@ -4,7 +4,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
-import { Sparkles, Upload, Check, ChevronDown, ChevronRight, AlertCircle, Trash2, RefreshCw, Send, MessageSquare, Import } from 'lucide-react'
+import { Sparkles, Upload, Check, ChevronDown, ChevronRight, AlertCircle, Trash2, RefreshCw, Send, MessageSquare, Import, Pencil } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
 // ─── Context builder for chat mode ───────────────────────────────────────────
@@ -160,10 +160,33 @@ ${context}`
 
 // ─── Import mode helpers ──────────────────────────────────────────────────────
 
-function buildSystemPrompt(existingIdeas) {
+// Robustly extract the first complete JSON object from a model response,
+// tolerating code fences, leading prose, or trailing text after the object.
+function extractJSON(raw) {
+  let s = (raw || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  const start = s.indexOf('{')
+  if (start === -1) throw new Error('No JSON object found in the response.')
+  let depth = 0, inStr = false, esc = false
+  for (let i = start; i < s.length; i++) {
+    const c = s[i]
+    if (esc) { esc = false; continue }
+    if (c === '\\') { esc = true; continue }
+    if (c === '"') { inStr = !inStr; continue }
+    if (!inStr) {
+      if (c === '{') depth++
+      else if (c === '}') { depth--; if (depth === 0) return JSON.parse(s.slice(start, i + 1)) }
+    }
+  }
+  throw new Error('The response contained incomplete JSON. Try again.')
+}
+
+function buildSystemPrompt(state) {
+  const existingIdeas = state.ideas || []
   const ideasContext = existingIdeas.length > 0
     ? `\n\nThe user already has these ideas saved:\n${existingIdeas.map((idea, i) => `${i + 1}. "${idea.title}"${idea.description ? ` — ${idea.description}` : ''}`).join('\n')}\n\nIMPORTANT: If the user's text appears to build on, expand, or add new thoughts to one of those existing ideas, put it in "ideaUpdates" instead of "data.ideas". If you are not certain whether it's related or a new idea, add it to "questions" to ask the user.`
     : ''
+
+  const dataContext = `\n\n=== THE USER'S CURRENT DATA ===\nThis is everything currently in their app. Use it to match items the user wants to EDIT or REMOVE. Match by title, even if the user's wording is slightly different or a different case (e.g. "updating request supervisor system" matches the project "Updating Request Supervisor App").\n\n${buildContextSummary(state)}\n=== END OF CURRENT DATA ===`
 
   return `You are a personal life organizer assistant. The user will give you unstructured text and you must parse it into structured JSON for their life manager app.
 
@@ -210,12 +233,22 @@ Return ONLY a valid JSON object. Only include keys that have items to add:
   "ideaUpdates": [
     { "existingTitle": "string (exact title of the existing idea to update)", "appendText": "string (the new thoughts/content to append to that idea's description)" }
   ],
+  "updates": [
+    { "section": "projects|tasks|deadlines|ideas|wantList|subscriptions|goals|calendar|watchlist.games|watchlist.shows", "title": "exact title of the existing item to edit (from the current data above)", "patch": { "onlyTheFieldsThatChange": "newValue" } }
+  ],
   "questions": [],
   "flagged": [],
   "removals": []
 }
 
 The "ideaUpdates" array is for content that expands an existing idea rather than creating a new one. Only use it when you are confident the new text relates to an existing idea.${ideasContext}
+
+The "updates" array is for EDITING an item the user already has (shown in the current data above). Use it when the user wants to change a property of an existing item — e.g. "change the tag of the Royal Ops System project to Royal Containers", "rename task X", "mark the Steam Deck as eventually instead of soon". CRITICAL RULES for updates:
+- The "patch" object must contain ONLY the fields that are actually changing. Never include fields you aren't changing.
+- NEVER include subtasks, completion status, done flags, or any field the user did not ask to change. The app merges your patch on top of the existing item, so leaving a field out keeps it exactly as it was. Including it risks overwriting/erasing the user's data.
+- For project tag changes, the field is "tag". Valid project tags: "Side Hustle", "Work", "Personal", "Health", "Finance" — or any custom label the user names (e.g. "Royal Containers").
+- The "title" MUST exactly match the title of an existing item from the current data above. If you cannot find a matching item, do NOT invent an update — instead add a "questions" entry asking the user to confirm.
+- Use "updates" for edits, NOT "removals" + re-add. Editing preserves all other data.
 
 The "removals" array is for things the user says they cancelled, finished, deleted, unsubscribed from, or no longer want tracked. Each entry: { "section": "subscriptions|tasks|goals|projects|deadlines|ideas|wantList|watchlist.games|watchlist.shows|moneyTracker.owed|moneyTracker.incoming|workouts", "title": "string (the name/title to match)", "reason": "one line explaining why it should be removed" }.
 
@@ -496,6 +529,8 @@ export default function AIImport() {
   const { settings, ideas, addEvent, addGoal, addProject, addSubtask,
     addDeadline, addGame, addShow, addOwed, addIncoming, addTask2, addIdea, updateIdea, addWantItem,
     addSubscription, addSession, addExercise,
+    updateProject, updateTask2, updateWantItem, updateDeadline, updateGoal,
+    updateSubscription, updateEvent, updateGame, updateShow,
     deleteTask2, deleteEvent, deleteGoal, deleteProject, deleteDeadline, deleteIdea,
     deleteWantItem, deleteSubscription, deleteSession, deleteGame, deleteShow, deleteOwed, deleteIncoming } = store
 
@@ -540,11 +575,10 @@ export default function AIImport() {
     const message = await client.messages.create({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
-      system: buildSystemPrompt(ideas),
+      system: buildSystemPrompt(useStore.getState()),
       messages,
     })
-    const raw = message.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-    return JSON.parse(raw)
+    return extractJSON(message.content?.[0]?.text || '')
   }
 
   const runImport = async () => {
@@ -678,6 +712,24 @@ export default function AIImport() {
 
     const state = useStore.getState()
     const match = (list, title) => list?.find((x) => (x.title || x.name || x.person || x.source || '')?.toLowerCase() === title?.toLowerCase())
+
+    // Apply edits to existing items (patch-merge — leaves untouched fields intact)
+    parsed.updates?.forEach((u) => {
+      if (!u?.patch || typeof u.patch !== 'object') return
+      const t = u.title
+      const s = u.section
+      if (s === 'projects') { const x = match(state.projects, t); if (x) updateProject(x.id, u.patch) }
+      else if (s === 'tasks') { const x = match(state.tasks, t); if (x) updateTask2(x.id, u.patch) }
+      else if (s === 'deadlines') { const x = match(state.deadlines, t); if (x) updateDeadline(x.id, u.patch) }
+      else if (s === 'ideas') { const x = match(state.ideas, t); if (x) updateIdea(x.id, u.patch) }
+      else if (s === 'wantList') { const x = match(state.wantList, t); if (x) updateWantItem(x.id, u.patch) }
+      else if (s === 'subscriptions') { const x = match(state.finance.subscriptions, t); if (x) updateSubscription(x.id, u.patch) }
+      else if (s === 'goals') { const x = match(state.goals, t); if (x) updateGoal(x.id, u.patch) }
+      else if (s === 'calendar') { const x = match(state.calendar.events, t); if (x) updateEvent(x.id, u.patch) }
+      else if (s === 'watchlist.games') { const x = match(state.watchlist.games, t); if (x) updateGame(x.id, u.patch) }
+      else if (s === 'watchlist.shows') { const x = match(state.watchlist.shows, t); if (x) updateShow(x.id, u.patch) }
+    })
+
     parsed.removals?.forEach((r, i) => {
       if (!confirmedRemovals[i]) return
       const t = r.title
@@ -714,8 +766,7 @@ export default function AIImport() {
           { role: 'user', content: `Current pending data:\n${JSON.stringify(parsed, null, 2)}\n\nInstruction: ${refineText.trim()}` },
         ],
       })
-      const raw = message.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
-      const updated = JSON.parse(raw)
+      const updated = extractJSON(message.content?.[0]?.text || '')
       setParsed(updated)
       const initRemovals = {}
       updated.removals?.forEach((_, i) => { initRemovals[i] = true })
@@ -742,9 +793,10 @@ export default function AIImport() {
 
   const d = parsed?.data || {}
   const ideaUpdates = parsed?.ideaUpdates || []
+  const edits = parsed?.updates || []
   const totalItems = [
     d.tasks?.length || 0, d.calendar?.length || 0, d.goals?.length || 0, d.projects?.length || 0,
-    d.deadlines?.length || 0, d.ideas?.length || 0, ideaUpdates.length, d.wantList?.length || 0,
+    d.deadlines?.length || 0, d.ideas?.length || 0, ideaUpdates.length, edits.length, d.wantList?.length || 0,
     d.subscriptions?.length || 0, d.workouts?.length || 0, d.watchlist?.games?.length || 0,
     d.watchlist?.shows?.length || 0, d.moneyTracker?.owed?.length || 0, d.moneyTracker?.incoming?.length || 0,
   ].reduce((a, b) => a + b, 0)
@@ -953,6 +1005,23 @@ export default function AIImport() {
                       <div>
                         <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">{upd.existingTitle}</p>
                         <p className="text-xs text-slate-400 mt-0.5 italic">"{upd.appendText}"</p>
+                      </div>
+                    </div>
+                  ))}
+                </SectionPreview>
+              )}
+              {edits.length > 0 && (
+                <SectionPreview title="Edits to Existing Items" count={edits.length}>
+                  {edits.map((u, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Pencil size={13} className="mt-0.5 shrink-0 text-amber-500" />
+                      <div>
+                        <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">
+                          {u.title} <span className="text-xs text-slate-400 font-normal capitalize">({u.section?.replace('watchlist.', '')})</span>
+                        </p>
+                        <p className="text-xs text-slate-400 mt-0.5">
+                          {Object.entries(u.patch || {}).map(([k, v]) => `${k} → ${typeof v === 'object' ? JSON.stringify(v) : v}`).join(', ')}
+                        </p>
                       </div>
                     </div>
                   ))}
