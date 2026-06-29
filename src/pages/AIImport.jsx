@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Anthropic from '@anthropic-ai/sdk'
 import useStore from '../store/useStore'
@@ -227,12 +227,13 @@ Rules:
 - Quick tasks and to-dos go in "tasks".
 - Events with a specific date go in "calendar". Time-sensitive sales/offers go in "deadlines".
 - Long-term ambitions go in "goals". Active work with steps goes in "projects".
-- Brain dump / startup / build ideas go in "ideas".
+- Brain dump / startup / build ideas go in "ideas". The "description" field of an idea can be long — use it for full notes, bullet lists, or multi-line content.
 - Things the user wants to buy go in "wantList".
 - Recurring paid services (Netflix, Spotify, SaaS tools, gym memberships, etc.) go in "subscriptions".
 - Workout routines, exercise plans, or gym sessions go in "workouts". Group exercises under a named session (e.g. "Leg Day", "Push Day").
 - Games and shows/movies/TV go in "watchlist".
 - Money owed or expected goes in "moneyTracker".
+- GROUPING RULE: If the user's input is a list of items under a single heading or topic (e.g. "Feature ideas:", "Books to read:", "Things to do this week:"), create ONE single entry with the heading as the title and ALL items combined in the description/notes field. Do NOT split a bulleted or numbered list into multiple separate entries. Only create multiple entries when each item is clearly independent (different dates, different categories, or obviously unrelated subjects).
 - If a date is relative (e.g. "next week") and you can resolve it from today's date, do so. If you cannot, add it to "questions".
 - If you are confident about category, put item in data and do NOT flag it.
 - If the user mentions cancelling, unsubscribing, finishing, removing, or no longer wanting something tracked, add it to "removals". Do NOT add it to "data" as well.
