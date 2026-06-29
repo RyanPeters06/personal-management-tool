@@ -1,4 +1,4 @@
-﻿import { useState, useRef, useEffect } from 'react'
+﻿import { useState, useRef, useEffect, Component } from 'react'
 import ReactMarkdown from 'react-markdown'
 import Anthropic from '@anthropic-ai/sdk'
 import useStore from '../store/useStore'
@@ -272,6 +272,34 @@ function PreviewItem({ text, sub }) {
   )
 }
 
+// ─── Safe markdown renderer with error boundary ───────────────────────────────
+
+class SafeMarkdown extends Component {
+  constructor(props) { super(props); this.state = { crashed: false } }
+  static getDerivedStateFromError() { return { crashed: true } }
+  render() {
+    if (this.state.crashed) return <p className="text-sm whitespace-pre-wrap">{this.props.content}</p>
+    return (
+      <ReactMarkdown
+        className="prose prose-sm dark:prose-invert max-w-none"
+        components={{
+          p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+          ul: ({ children }) => <ul className="mb-2 pl-4 space-y-0.5 list-disc">{children}</ul>,
+          ol: ({ children }) => <ol className="mb-2 pl-4 space-y-0.5 list-decimal">{children}</ol>,
+          li: ({ children }) => <li className="text-sm">{children}</li>,
+          h1: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
+          h2: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
+          h3: ({ children }) => <p className="font-semibold text-sm mt-2 mb-1">{children}</p>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          code: ({ children }) => <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{children}</code>,
+        }}
+      >
+        {this.props.content}
+      </ReactMarkdown>
+    )
+  }
+}
+
 // ─── Chat mode ────────────────────────────────────────────────────────────────
 
 function ChatMode({ settings, storeState }) {
@@ -299,16 +327,18 @@ function ChatMode({ settings, storeState }) {
 
     try {
       const client = new Anthropic({ apiKey: settings.claudeApiKey, dangerouslyAllowBrowser: true })
+      const systemPrompt = buildChatSystemPrompt(storeState)
       const response = await client.messages.create({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
-        system: buildChatSystemPrompt(storeState),
+        max_tokens: 2048,
+        system: systemPrompt,
         messages: newMessages,
       })
-      const reply = response.content[0].text
+      const reply = response.content?.[0]?.text || '(No response)'
       setMessages((m) => [...m, { role: 'assistant', content: reply }])
     } catch (e) {
-      setError(e.message || 'Something went wrong.')
+      const msg = e?.message || e?.error?.message || String(e) || 'Something went wrong.'
+      setError(msg)
       setMessages(messages)
     } finally {
       setLoading(false)
@@ -384,22 +414,7 @@ Format it clearly with sections and bullet points. Be concise.`)}
               style={msg.role === 'user' ? { backgroundColor: 'var(--accent-500)' } : {}}
             >
               {msg.role === 'assistant' ? (
-                <ReactMarkdown
-                  className="prose prose-sm dark:prose-invert max-w-none"
-                  components={{
-                    p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-                    ul: ({ children }) => <ul className="mb-2 pl-4 space-y-0.5 list-disc">{children}</ul>,
-                    ol: ({ children }) => <ol className="mb-2 pl-4 space-y-0.5 list-decimal">{children}</ol>,
-                    li: ({ children }) => <li className="text-sm">{children}</li>,
-                    h1: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
-                    h2: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
-                    h3: ({ children }) => <p className="font-semibold text-sm mt-2 mb-1">{children}</p>,
-                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-                    code: ({ children }) => <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{children}</code>,
-                  }}
-                >
-                  {msg.content}
-                </ReactMarkdown>
+                <SafeMarkdown content={msg.content} />
               ) : msg.content}
             </div>
           </div>
