@@ -5,15 +5,9 @@ import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
 import TagSelect, { tagColor } from '../components/shared/TagSelect'
-import { Plus, Trash2, Pencil, ExternalLink, ShoppingCart, X, Check, ChevronDown, ChevronRight, RotateCcw } from 'lucide-react'
+import { Plus, Trash2, Pencil, ExternalLink, ShoppingCart, X, Check, RotateCcw } from 'lucide-react'
 
 const PRIORITY_COLORS = { high: 'red', medium: 'yellow', low: 'slate' }
-
-const TIMEFRAME_META = {
-  soon:       { label: 'Soon',      desc: 'Actively looking to buy' },
-  eventually: { label: 'Eventually', desc: 'Next few months' },
-  someday:    { label: 'Someday',   desc: 'Long-term wishlist' },
-}
 
 function OptionRow({ option, onChange, onDelete }) {
   return (
@@ -94,7 +88,6 @@ function WantItemForm({ initial, onSave, onCancel }) {
           >
             <option value="soon">Soon — actively looking</option>
             <option value="eventually">Eventually — next few months</option>
-            <option value="someday">Someday — long-term wish</option>
           </select>
         </div>
       </div>
@@ -213,10 +206,10 @@ export default function WantList() {
   const [filter, setFilter] = useState('all')
   const [showAdd, setShowAdd] = useState(false)
   const [editItem, setEditItem] = useState(null)
-  const [somedayOpen, setSomedayOpen] = useState(false)
 
-  const visible = wantList.filter((i) => {
-    if (filter === 'pending') return !i.purchased
+  const filtered = wantList.filter((i) => {
+    if (filter === 'soon') return !i.purchased && (i.timeframe === 'soon' || !i.timeframe)
+    if (filter === 'eventually') return !i.purchased && i.timeframe === 'eventually'
     if (filter === 'purchased') return i.purchased
     return true
   })
@@ -231,13 +224,6 @@ export default function WantList() {
     onUndo: () => updateWantItem(item.id, { purchased: false }),
   })
 
-  const soon       = visible.filter((i) => !i.purchased && (i.timeframe === 'soon' || !i.timeframe))
-  const eventually = visible.filter((i) => !i.purchased && i.timeframe === 'eventually')
-  const someday    = visible.filter((i) => !i.purchased && i.timeframe === 'someday')
-  const purchased  = visible.filter((i) => i.purchased)
-
-  const hasGroups = soon.length + eventually.length + someday.length + purchased.length > 0
-
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <PageHeader
@@ -251,7 +237,7 @@ export default function WantList() {
       />
 
       <div className="flex gap-1 mb-5 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 w-fit">
-        {['all', 'pending', 'purchased'].map((f) => (
+        {['all', 'soon', 'eventually', 'purchased'].map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -265,60 +251,16 @@ export default function WantList() {
         ))}
       </div>
 
-      {!hasGroups && (
+      {filtered.length === 0 && (
         <div className="text-center py-16">
           <ShoppingCart size={32} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm text-slate-400">Your want list is empty.</p>
+          <p className="text-sm text-slate-400">Nothing here yet.</p>
         </div>
       )}
 
-      {/* Soon */}
-      {soon.length > 0 && (
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Soon</p>
-          <div className="space-y-3">
-            {soon.map((item) => <WantItemCard {...cardProps(item)} />)}
-          </div>
-        </div>
-      )}
-
-      {/* Eventually */}
-      {eventually.length > 0 && (
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Eventually</p>
-          <div className="space-y-3">
-            {eventually.map((item) => <WantItemCard {...cardProps(item)} dimmed />)}
-          </div>
-        </div>
-      )}
-
-      {/* Someday — collapsible, visually de-emphasized */}
-      {someday.length > 0 && (
-        <div className="mb-6">
-          <button
-            onClick={() => setSomedayOpen((o) => !o)}
-            className="flex items-center gap-2 mb-2 text-xs font-semibold text-slate-300 dark:text-slate-500 uppercase tracking-wide hover:text-slate-500 dark:hover:text-slate-400 transition-colors"
-          >
-            {somedayOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
-            Someday ({someday.length})
-          </button>
-          {somedayOpen && (
-            <div className="space-y-3 opacity-60">
-              {someday.map((item) => <WantItemCard {...cardProps(item)} />)}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Purchased */}
-      {purchased.length > 0 && (
-        <div className="mb-6">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Bought</p>
-          <div className="space-y-3">
-            {purchased.map((item) => <WantItemCard {...cardProps(item)} />)}
-          </div>
-        </div>
-      )}
+      <div className="space-y-3">
+        {filtered.map((item) => <WantItemCard {...cardProps(item)} />)}
+      </div>
 
       {showAdd && (
         <Modal title="Add to Want List" onClose={() => setShowAdd(false)}>
