@@ -273,7 +273,7 @@ export default function Finance() {
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     ${parseFloat(sub.cost).toFixed(2)} / {sub.cycle}
-                    {sub.renewalDate && ` · Renews on the ${sub.renewalDate}${['11','12','13'].includes(String(sub.renewalDate)) ? 'th' : String(sub.renewalDate).endsWith('1') ? 'st' : String(sub.renewalDate).endsWith('2') ? 'nd' : String(sub.renewalDate).endsWith('3') ? 'rd' : 'th'}`}
+                    {sub.renewalDate && (() => { const d = String(sub.renewalDate); const ord = ['11','12','13'].includes(d) ? 'th' : d.endsWith('1') ? 'st' : d.endsWith('2') ? 'nd' : d.endsWith('3') ? 'rd' : 'th'; const month = format(new Date(), 'MMMM'); return ` · Renews on the ${d}${ord} of ${month}` })()}
                   </p>
                 </div>
                 <button
