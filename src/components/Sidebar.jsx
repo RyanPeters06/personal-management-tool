@@ -47,10 +47,10 @@ export default function Sidebar({ currentPage, onNavigate }) {
           src={hughWalking}
           alt=""
           className="object-contain shrink-0"
-          style={{ width: 35, height: 35, margin: '-3.5px' }}
+          style={{ width: 44, height: 44, margin: '-8px' }}
         />
         {!collapsed && (
-          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">Life Manager</span>
+          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate ml-3">Life Manager</span>
         )}
       </div>
 
