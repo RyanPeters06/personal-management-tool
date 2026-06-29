@@ -73,17 +73,24 @@ function TaskForm({ initial, onSave, onCancel }) {
   )
 }
 
+// Persists collapsed state for the session (survives navigation, resets on app close)
+const sessionCollapsed = {}
+
 export default function Tasks({ onNavigate }) {
   const { tasks, addTask2, updateTask2, deleteTask2, projects, toggleSubtask, settings } = useStore()
   const customTagColors = settings.customTagColors || {}
   const [filter, setFilter] = useState('active')
   const [showAdd, setShowAdd] = useState(false)
   const [editTask, setEditTask] = useState(null)
-  const [collapsedProjects, setCollapsedProjects] = useState({})
+  const [collapsedProjects, setCollapsedProjects] = useState(sessionCollapsed)
   const [completing, setCompleting] = useState(new Set())
   const [poppingSubtasks, setPoppingSubtasks] = useState(new Set())
 
-  const toggleProject = (id) => setCollapsedProjects((c) => ({ ...c, [id]: !c[id] }))
+  const toggleProject = (id) => setCollapsedProjects((c) => {
+    const next = { ...c, [id]: !c[id] }
+    Object.assign(sessionCollapsed, next)
+    return next
+  })
 
   const handleToggleSubtask = useCallback((projId, stId, isDone) => {
     if (!isDone) {
