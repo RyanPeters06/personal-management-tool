@@ -2,7 +2,8 @@ import { useState } from 'react'
 import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
-import { Moon, Sun, Eye, EyeOff, Trash2, X, Plus, Download } from 'lucide-react'
+import Modal from '../components/shared/Modal'
+import { Moon, Sun, Eye, EyeOff, Trash2, X, Plus, Download, AlertTriangle } from 'lucide-react'
 
 const ACCENTS = [
   { id: 'slate', label: 'Sky Blue', color: '#0ea5e9' },
@@ -17,7 +18,7 @@ export default function Settings() {
   const [keyDraft, setKeyDraft] = useState(settings.claudeApiKey || '')
   const [newTag, setNewTag] = useState('')
   const [confirmWipe, setConfirmWipe] = useState(false)
-  const [confirmSection, setConfirmSection] = useState(null)
+  const [confirmSection, setConfirmSection] = useState(null) // { key, label }
   const [restoreError, setRestoreError] = useState('')
   const [restoreSuccess, setRestoreSuccess] = useState(false)
 
@@ -219,26 +220,39 @@ export default function Settings() {
           ].map(({ key, label }) => (
             <button
               key={key}
-              onClick={() => {
-                if (confirmSection === key) {
-                  wipeSectionData(key)
-                  setConfirmSection(null)
-                } else {
-                  setConfirmSection(key)
-                  setTimeout(() => setConfirmSection(null), 3000)
-                }
-              }}
-              className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors ${
-                confirmSection === key
-                  ? 'bg-red-500 text-white border-red-500'
-                  : 'text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-red-300 hover:text-red-500 dark:hover:text-red-400'
-              }`}
+              onClick={() => setConfirmSection({ key, label })}
+              className="px-3 py-1.5 text-xs font-medium rounded-lg border text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:border-red-300 hover:text-red-500 dark:hover:text-red-400 transition-colors"
             >
-              {confirmSection === key ? `Confirm clear ${label}` : label}
+              {label}
             </button>
           ))}
         </div>
       </div>
+
+      {confirmSection && (
+        <Modal title="Clear section?" onClose={() => setConfirmSection(null)}>
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+              <AlertTriangle size={18} className="text-red-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-700 dark:text-red-400">This cannot be undone.</p>
+                <p className="text-sm text-red-600 dark:text-red-300 mt-0.5">
+                  All data in <strong>{confirmSection.label}</strong> will be permanently deleted.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="secondary" onClick={() => setConfirmSection(null)}>Cancel</Button>
+              <button
+                onClick={() => { wipeSectionData(confirmSection.key); setConfirmSection(null) }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-lg transition-colors"
+              >
+                Yes, clear {confirmSection.label}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
 
       {/* Wipe Data */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-red-200 dark:border-red-900/40 p-4 mb-4">
