@@ -236,7 +236,7 @@ export default function Tasks({ onNavigate }) {
                 {!isCollapsed && (
                   <div className="border-t border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/60">
                     {subtasks.map((st) => (
-                      <div key={st.id} className={`flex items-center gap-3 px-4 py-2.5 ${st.done ? 'task-done' : ''}`}>
+                      <div key={st.id} className={`flex items-center gap-3 px-4 py-2.5 ${st.done ? 'task-done' : ''} ${poppingSubtasks.has(st.id) ? 'subtask-completing' : ''}`}>
                         <button
                           onClick={() => handleToggleSubtask(proj.id, st.id, st.done)}
                           className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${st.done ? 'border-transparent' : 'border-slate-300 dark:border-slate-500'}`}

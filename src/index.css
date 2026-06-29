@@ -113,6 +113,10 @@ body {
   pointer-events: none;
 }
 
+.subtask-completing {
+  animation: row-flash 0.4s ease-out;
+}
+
 /* Drag handle */
 .drag-region {
   -webkit-app-region: drag;
