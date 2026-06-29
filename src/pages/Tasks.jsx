@@ -74,14 +74,24 @@ function TaskForm({ initial, onSave, onCancel }) {
 }
 
 export default function Tasks({ onNavigate }) {
-  const { tasks, addTask2, updateTask2, deleteTask2, projects } = useStore()
+  const { tasks, addTask2, updateTask2, deleteTask2, projects, toggleSubtask } = useStore()
   const [filter, setFilter] = useState('active')
   const [showAdd, setShowAdd] = useState(false)
   const [editTask, setEditTask] = useState(null)
   const [collapsedProjects, setCollapsedProjects] = useState({})
   const [completing, setCompleting] = useState(new Set())
+  const [poppingSubtasks, setPoppingSubtasks] = useState(new Set())
 
   const toggleProject = (id) => setCollapsedProjects((c) => ({ ...c, [id]: !c[id] }))
+
+  const handleToggleSubtask = useCallback((projId, stId, isDone) => {
+    if (!isDone) {
+      playCompleteSound()
+      setPoppingSubtasks((s) => new Set(s).add(stId))
+      setTimeout(() => setPoppingSubtasks((s) => { const n = new Set(s); n.delete(stId); return n }), 400)
+    }
+    toggleSubtask(projId, stId)
+  }, [toggleSubtask])
 
   const handleCheck = useCallback((task) => {
     const goingDone = !task.done
@@ -224,16 +234,17 @@ export default function Tasks({ onNavigate }) {
                 {/* Subtask list */}
                 {!isCollapsed && (
                   <div className="border-t border-slate-100 dark:border-slate-700 divide-y divide-slate-100 dark:divide-slate-700/60">
-                    {subtasks.map((task) => (
-                      <div key={task.id} className="flex items-start gap-3 px-4 py-2.5">
-                        <div
-                          className={`mt-0.5 w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center ${task.done ? 'border-transparent' : 'border-slate-300 dark:border-slate-500'}`}
-                          style={task.done ? { backgroundColor: 'var(--accent-500)' } : {}}
+                    {subtasks.map((st) => (
+                      <div key={st.id} className={`flex items-center gap-3 px-4 py-2.5 ${st.done ? 'task-done' : ''}`}>
+                        <button
+                          onClick={() => handleToggleSubtask(proj.id, st.id, st.done)}
+                          className={`w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${st.done ? 'border-transparent' : 'border-slate-300 dark:border-slate-500'}`}
+                          style={st.done ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
                         >
-                          {task.done && <Check size={10} className="text-white" />}
-                        </div>
-                        <p className={`text-sm flex-1 ${task.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                          {task.title}
+                          {st.done && <Check size={9} className={`text-white ${poppingSubtasks.has(st.id) ? 'task-check-pop' : ''}`} />}
+                        </button>
+                        <p className={`text-sm flex-1 min-w-0 truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                          {st.title}
                         </p>
                       </div>
                     ))}

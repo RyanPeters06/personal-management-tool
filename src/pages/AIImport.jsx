@@ -1,9 +1,164 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
 import Anthropic from '@anthropic-ai/sdk'
 import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
-import { Sparkles, Upload, Check, ChevronDown, ChevronRight, AlertCircle, Trash2, RefreshCw } from 'lucide-react'
+import { Sparkles, Upload, Check, ChevronDown, ChevronRight, AlertCircle, Trash2, RefreshCw, Send, MessageSquare, Import } from 'lucide-react'
+import { format, parseISO } from 'date-fns'
+
+// ─── Context builder for chat mode ───────────────────────────────────────────
+
+function buildContextSummary(state) {
+  const today = new Date().toISOString().slice(0, 10)
+  const lines = [`Today's date: ${today}\n`]
+
+  // Tasks
+  const activeTasks = (state.tasks || []).filter((t) => !t.done)
+  const doneTasks = (state.tasks || []).filter((t) => t.done)
+  if (activeTasks.length > 0) {
+    lines.push('## Active Tasks')
+    activeTasks.forEach((t) => {
+      let s = `- ${t.title}`
+      if (t.dueDate) s += ` (due ${t.dueDate})`
+      if (t.priority && t.priority !== 'none') s += ` [${t.priority} priority]`
+      if (t.notes) s += ` — ${t.notes}`
+      lines.push(s)
+    })
+  }
+  if (doneTasks.length > 0) {
+    lines.push(`\n## Completed Tasks (${doneTasks.length} total)`)
+    doneTasks.slice(0, 10).forEach((t) => lines.push(`- ✓ ${t.title}`))
+    if (doneTasks.length > 10) lines.push(`  ...and ${doneTasks.length - 10} more`)
+  }
+
+  // Projects
+  if ((state.projects || []).length > 0) {
+    lines.push('\n## Projects')
+    state.projects.forEach((p) => {
+      const done = (p.subtasks || []).filter((s) => s.done).length
+      const total = (p.subtasks || []).length
+      let s = `- **${p.title}** [${p.status}]`
+      if (p.tag) s += ` [${p.tag}]`
+      if (total > 0) s += ` — ${done}/${total} tasks done`
+      if (p.description) s += `\n  Description: ${p.description}`
+      lines.push(s)
+      p.subtasks?.forEach((st) => {
+        lines.push(`  ${st.done ? '  ✓' : '  ○'} ${st.title}`)
+      })
+    })
+  }
+
+  // Calendar events
+  const events = (state.calendar?.events || []).filter((e) => e.date >= today)
+  if (events.length > 0) {
+    lines.push('\n## Upcoming Calendar Events')
+    events.sort((a, b) => a.date.localeCompare(b.date)).slice(0, 20).forEach((e) => {
+      let s = `- ${e.date}${e.time ? ` at ${e.time}` : ''}: ${e.title}`
+      if (e.category) s += ` [${e.category}]`
+      if (e.notes) s += ` — ${e.notes}`
+      lines.push(s)
+    })
+  }
+
+  // Deadlines
+  const activeDeadlines = (state.deadlines || []).filter((d) => !d.done)
+  if (activeDeadlines.length > 0) {
+    lines.push('\n## Active Deadlines')
+    activeDeadlines.sort((a, b) => a.endDate.localeCompare(b.endDate)).forEach((d) => {
+      let s = `- ${d.endDate}: ${d.title}`
+      if (d.category) s += ` [${d.category}]`
+      if (d.notes) s += ` — ${d.notes}`
+      lines.push(s)
+    })
+  }
+
+  // Finance: subscriptions
+  const activeSubs = (state.finance?.subscriptions || []).filter((s) => s.active)
+  if (activeSubs.length > 0) {
+    const monthlyTotal = activeSubs.reduce((sum, s) => sum + (s.cycle === 'annual' ? Number(s.cost) / 12 : Number(s.cost)), 0)
+    lines.push(`\n## Subscriptions (${activeSubs.length} active, ~$${monthlyTotal.toFixed(2)}/mo)`)
+    activeSubs.forEach((s) => {
+      lines.push(`- ${s.name}: $${s.cost}/${s.cycle === 'annual' ? 'yr' : 'mo'} [${s.category}]${s.renewalDate ? ` renews ${s.renewalDate}` : ''}`)
+    })
+  }
+
+  // Finance: budget
+  const income = state.finance?.budget?.income || 0
+  const expenses = state.finance?.budget?.expenses || []
+  if (income || expenses.length > 0) {
+    lines.push(`\n## Budget`)
+    if (income) lines.push(`- Income: $${income}/mo`)
+    expenses.forEach((e) => lines.push(`- Expense: ${e.label} $${e.amount}`))
+  }
+
+  // Finance: notes
+  if (state.finance?.notes) {
+    lines.push(`\n## Financial Notes\n${state.finance.notes}`)
+  }
+
+  // Want list
+  const pendingWants = (state.wantList || []).filter((i) => !i.purchased)
+  if (pendingWants.length > 0) {
+    lines.push('\n## Want List')
+    pendingWants.forEach((item) => {
+      let s = `- ${item.title} [${item.priority} priority]`
+      if (item.notes) s += ` — ${item.notes}`
+      lines.push(s)
+    })
+  }
+
+  // Ideas
+  if ((state.ideas || []).length > 0) {
+    lines.push('\n## Ideas')
+    state.ideas.forEach((idea) => {
+      let s = `- **${idea.title}** [${idea.status}]`
+      if (idea.description) s += `\n  ${idea.description}`
+      lines.push(s)
+    })
+  }
+
+  // Workouts
+  const sessions = state.workouts?.sessions || []
+  if (sessions.length > 0) {
+    lines.push('\n## Workout Sessions')
+    sessions.forEach((s) => {
+      const exList = (s.exercises || []).map((e) => e.name).join(', ')
+      lines.push(`- ${s.name}${exList ? `: ${exList}` : ''}`)
+    })
+  }
+
+  // Library: games
+  const games = state.watchlist?.games || []
+  const activeGames = games.filter((g) => g.status !== 'done')
+  if (activeGames.length > 0) {
+    lines.push('\n## Games')
+    activeGames.forEach((g) => {
+      lines.push(`- ${g.title}${g.platform ? ` (${g.platform})` : ''} [${g.status}]`)
+    })
+  }
+
+  // Library: shows
+  const shows = state.watchlist?.shows || []
+  const activeShows = shows.filter((s) => s.status !== 'done')
+  if (activeShows.length > 0) {
+    lines.push('\n## Shows & Movies')
+    activeShows.forEach((s) => {
+      lines.push(`- ${s.title}${s.service ? ` (${s.service})` : ''} [${s.status}]`)
+    })
+  }
+
+  return lines.join('\n')
+}
+
+function buildChatSystemPrompt(state) {
+  const context = buildContextSummary(state)
+  return `You are a personal assistant for the user's life manager app. You have full access to their current data shown below. Answer questions helpfully, concisely, and conversationally. When the user asks about schedules, summaries, or what they need to do, pull directly from their data. Use bullet points or short sentences — no unnecessary filler. Do not suggest adding things to the app unless asked.
+
+${context}`
+}
+
+// ─── Import mode helpers ──────────────────────────────────────────────────────
 
 function buildSystemPrompt(existingIdeas) {
   const ideasContext = existingIdeas.length > 0
@@ -85,6 +240,8 @@ Rules:
 - Return ONLY the JSON object. No explanation, no markdown code fences, no prose.`
 }
 
+// ─── Shared sub-components ────────────────────────────────────────────────────
+
 function SectionPreview({ title, count, children }) {
   const [open, setOpen] = useState(true)
   if (count === 0) return null
@@ -114,6 +271,207 @@ function PreviewItem({ text, sub }) {
   )
 }
 
+// ─── Chat mode ────────────────────────────────────────────────────────────────
+
+function ChatMode({ settings, storeState }) {
+  const [messages, setMessages] = useState([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const bottomRef = useRef(null)
+  const inputRef = useRef(null)
+
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, loading])
+
+  const sendMessage = async (text) => {
+    if (!text || loading) return
+    if (!settings.claudeApiKey) { setError('Add your Claude API key in Settings first.'); return }
+    if (!navigator.onLine) { setError("You're offline."); return }
+
+    const newMessages = [...messages, { role: 'user', content: text }]
+    setMessages(newMessages)
+    setInput('')
+    setLoading(true)
+    setError('')
+
+    try {
+      const client = new Anthropic({ apiKey: settings.claudeApiKey, dangerouslyAllowBrowser: true })
+      const response = await client.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        system: buildChatSystemPrompt(storeState),
+        messages: newMessages,
+      })
+      const reply = response.content[0].text
+      setMessages((m) => [...m, { role: 'assistant', content: reply }])
+    } catch (e) {
+      setError(e.message || 'Something went wrong.')
+      setMessages(messages)
+    } finally {
+      setLoading(false)
+      inputRef.current?.focus()
+    }
+  }
+
+  const send = () => sendMessage(input.trim())
+
+  const clearChat = () => {
+    setMessages([])
+    setError('')
+    inputRef.current?.focus()
+  }
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-13rem)]">
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-2">
+        {messages.length === 0 && (
+          <div className="text-center py-8">
+            <MessageSquare size={28} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+            <p className="text-sm text-slate-400 mb-4">Ask me anything about your data.</p>
+
+            {/* Weekly Digest button */}
+            <button
+              onClick={() => sendMessage(`Give me a full weekly digest for this week. Cover:
+- Tasks that are overdue or due within the next 7 days
+- Upcoming calendar events in the next 7 days
+- Active deadlines and how many days are left
+- Project status (active projects with subtask progress)
+- Any subscriptions renewing soon
+Format it clearly with sections and bullet points. Be concise.`)}
+              disabled={loading}
+              className="flex items-center gap-2 mx-auto mb-5 px-4 py-2.5 rounded-xl text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:opacity-40"
+              style={{ backgroundColor: 'var(--accent-500)' }}
+            >
+              <Sparkles size={14} /> Weekly Digest
+            </button>
+
+            <div className="flex flex-wrap justify-center gap-2">
+              {[
+                'What do I have on this weekend?',
+                'Summarize my active projects',
+                'What tasks are overdue?',
+                'What deadlines are coming up?',
+              ].map((q) => (
+                <button
+                  key={q}
+                  onClick={() => { setInput(q); inputRef.current?.focus() }}
+                  className="text-xs px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                >
+                  {q}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg, i) => (
+          <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {msg.role === 'assistant' && (
+              <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mr-2 mt-0.5" style={{ backgroundColor: 'var(--accent-500)' }}>
+                <Sparkles size={12} className="text-white" />
+              </div>
+            )}
+            <div
+              className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                msg.role === 'user'
+                  ? 'text-white rounded-br-sm'
+                  : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 rounded-bl-sm'
+              }`}
+              style={msg.role === 'user' ? { backgroundColor: 'var(--accent-500)' } : {}}
+            >
+              {msg.role === 'assistant' ? (
+                <ReactMarkdown
+                  className="prose prose-sm dark:prose-invert max-w-none"
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+                    ul: ({ children }) => <ul className="mb-2 pl-4 space-y-0.5 list-disc">{children}</ul>,
+                    ol: ({ children }) => <ol className="mb-2 pl-4 space-y-0.5 list-decimal">{children}</ol>,
+                    li: ({ children }) => <li className="text-sm">{children}</li>,
+                    h1: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
+                    h2: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
+                    h3: ({ children }) => <p className="font-semibold text-sm mt-2 mb-1">{children}</p>,
+                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    code: ({ children }) => <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{children}</code>,
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              ) : msg.content}
+            </div>
+          </div>
+        ))}
+
+        {loading && (
+          <div className="flex justify-start">
+            <div className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center mr-2 mt-0.5" style={{ backgroundColor: 'var(--accent-500)' }}>
+              <Sparkles size={12} className="text-white" />
+            </div>
+            <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl rounded-bl-sm px-4 py-3">
+              <div className="flex gap-1 items-center">
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent-500)', animationDelay: '0ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent-500)', animationDelay: '150ms' }} />
+                <span className="w-1.5 h-1.5 rounded-full animate-bounce" style={{ backgroundColor: 'var(--accent-500)', animationDelay: '300ms' }} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3">
+            <AlertCircle size={14} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+          </div>
+        )}
+
+        <div ref={bottomRef} />
+      </div>
+
+      {/* Input row */}
+      <div className="mt-3 flex gap-2 items-end">
+        <div className="flex-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-2xl px-4 py-2.5 focus-within:border-slate-400 transition-colors">
+          <textarea
+            ref={inputRef}
+            rows={1}
+            className="w-full text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none resize-none placeholder-slate-400 max-h-32"
+            placeholder="Ask about your schedule, tasks, projects..."
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value)
+              e.target.style.height = 'auto'
+              e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px'
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+            }}
+          />
+        </div>
+        <button
+          onClick={send}
+          disabled={!input.trim() || loading}
+          className="w-10 h-10 rounded-full flex items-center justify-center transition-colors shrink-0 disabled:opacity-40"
+          style={{ backgroundColor: 'var(--accent-500)' }}
+        >
+          <Send size={16} className="text-white" />
+        </button>
+        {messages.length > 0 && (
+          <button
+            onClick={clearChat}
+            className="text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 px-2 py-1 transition-colors shrink-0"
+          >
+            Clear
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-slate-400 mt-2 text-center">Shift+Enter for new line · Enter to send</p>
+    </div>
+  )
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function AIImport() {
   const store = useStore()
   const { settings, ideas, addEvent, addGoal, addProject, addSubtask,
@@ -122,6 +480,7 @@ export default function AIImport() {
     deleteTask2, deleteEvent, deleteGoal, deleteProject, deleteDeadline, deleteIdea,
     deleteWantItem, deleteSubscription, deleteSession, deleteGame, deleteShow, deleteOwed, deleteIncoming } = store
 
+  const [mode, setMode] = useState('chat') // 'chat' | 'import'
   const [text, setText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -130,7 +489,6 @@ export default function AIImport() {
   const [answers, setAnswers] = useState({})
   const [flaggedChoices, setFlaggedChoices] = useState({})
   const [confirmedRemovals, setConfirmedRemovals] = useState({})
-  const [accepted, setAccepted] = useState(false)
 
   const hasKey = !!settings.claudeApiKey
 
@@ -175,7 +533,6 @@ export default function AIImport() {
     try {
       const result = await callClaude([{ role: 'user', content: text }])
       setParsed(result)
-      // Pre-check all removals by default
       const initRemovals = {}
       result.removals?.forEach((_, i) => { initRemovals[i] = true })
       setConfirmedRemovals(initRemovals)
@@ -202,7 +559,6 @@ export default function AIImport() {
     const hasQuestions = parsed.questions?.length > 0
     if (!hasQuestions && parsed.flagged?.length === 0) { setPhase('preview'); return }
 
-    // If only flagged (no questions), resolve locally
     if (!hasQuestions) {
       resolveFlaggedLocally()
       setPhase('preview')
@@ -218,7 +574,6 @@ export default function AIImport() {
         { role: 'assistant', content: JSON.stringify(parsed) },
         { role: 'user', content: `Here are my answers to your questions:\n${clarificationText}\n\nPlease re-parse the original text with this context. Return the same JSON format.` },
       ])
-      // Merge flagged resolutions
       resolveFlaggedInto(result)
       setParsed(result)
       setPhase('preview')
@@ -279,9 +634,7 @@ export default function AIImport() {
         (idea) => idea.title.toLowerCase() === upd.existingTitle.toLowerCase()
       )
       if (existing) {
-        const newDesc = existing.description
-          ? `${existing.description}\n\n${upd.appendText}`
-          : upd.appendText
+        const newDesc = existing.description ? `${existing.description}\n\n${upd.appendText}` : upd.appendText
         updateIdea(existing.id, { description: newDesc })
       }
     })
@@ -299,7 +652,6 @@ export default function AIImport() {
     d.moneyTracker?.owed?.forEach((o) => addOwed(o))
     d.moneyTracker?.incoming?.forEach((inc) => addIncoming(inc))
 
-    // Process confirmed removals
     const state = useStore.getState()
     const match = (list, title) => list?.find((x) => (x.title || x.name || x.person || x.source || '')?.toLowerCase() === title?.toLowerCase())
     parsed.removals?.forEach((r, i) => {
@@ -321,14 +673,12 @@ export default function AIImport() {
       else if (s === 'calendar') { const x = match(state.calendar.events, t); if (x) deleteEvent(x.id) }
     })
 
-    setAccepted(true)
     setPhase('done')
   }
 
   const reset = () => {
     setText('')
     setParsed(null)
-    setAccepted(false)
     setError('')
     setAnswers({})
     setFlaggedChoices({})
@@ -339,27 +689,17 @@ export default function AIImport() {
   const d = parsed?.data || {}
   const ideaUpdates = parsed?.ideaUpdates || []
   const totalItems = [
-    d.tasks?.length || 0,
-    d.calendar?.length || 0,
-    d.goals?.length || 0,
-    d.projects?.length || 0,
-    d.deadlines?.length || 0,
-    d.ideas?.length || 0,
-    ideaUpdates.length,
-    d.wantList?.length || 0,
-    d.subscriptions?.length || 0,
-    d.workouts?.length || 0,
-    d.watchlist?.games?.length || 0,
-    d.watchlist?.shows?.length || 0,
-    d.moneyTracker?.owed?.length || 0,
-    d.moneyTracker?.incoming?.length || 0,
+    d.tasks?.length || 0, d.calendar?.length || 0, d.goals?.length || 0, d.projects?.length || 0,
+    d.deadlines?.length || 0, d.ideas?.length || 0, ideaUpdates.length, d.wantList?.length || 0,
+    d.subscriptions?.length || 0, d.workouts?.length || 0, d.watchlist?.games?.length || 0,
+    d.watchlist?.shows?.length || 0, d.moneyTracker?.owed?.length || 0, d.moneyTracker?.incoming?.length || 0,
   ].reduce((a, b) => a + b, 0)
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <PageHeader
-        title="AI Import"
-        subtitle="Paste any text and Claude will organize it for you"
+        title="Assistant"
+        subtitle={mode === 'chat' ? 'Ask questions about your data' : 'Paste text to add or remove things'}
       />
 
       {!hasKey && (
@@ -371,285 +711,268 @@ export default function AIImport() {
         </div>
       )}
 
-      {phase === 'input' && (
+      {/* Mode toggle */}
+      <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm mb-6 w-fit">
+        <button
+          onClick={() => setMode('chat')}
+          className={`flex items-center gap-2 px-4 py-2 transition-colors ${mode === 'chat' ? 'text-white font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          style={mode === 'chat' ? { backgroundColor: 'var(--accent-500)' } : {}}
+        >
+          <MessageSquare size={14} /> Chat
+        </button>
+        <button
+          onClick={() => { setMode('import'); reset() }}
+          className={`flex items-center gap-2 px-4 py-2 transition-colors ${mode === 'import' ? 'text-white font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+          style={mode === 'import' ? { backgroundColor: 'var(--accent-500)' } : {}}
+        >
+          <Upload size={14} /> Import
+        </button>
+      </div>
+
+      {/* ── Chat mode ── */}
+      {mode === 'chat' && (
+        <ChatMode settings={settings} storeState={useStore.getState()} />
+      )}
+
+      {/* ── Import mode ── */}
+      {mode === 'import' && (
         <>
-          <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Paste your text or load a file</p>
-              <button
-                onClick={loadFile}
-                className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 transition-colors"
-              >
-                <Upload size={12} /> Load .txt / .md
-              </button>
-            </div>
-            <textarea
-              className="w-full h-56 text-sm bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 outline-none resize-none placeholder-slate-400 focus:border-slate-400"
-              placeholder={`Paste anything here — a to-do list, notes, a brain dump...\n\nExamples:\n• "Buy new headphones by Friday"\n• "John owes me $40 for dinner"\n• "Watch Oppenheimer on Netflix"\n• "Goal: Launch my YouTube channel by December"`}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-            />
-          </div>
+          {phase === 'input' && (
+            <>
+              <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">Paste your text or load a file</p>
+                  <button
+                    onClick={loadFile}
+                    className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-1.5 transition-colors"
+                  >
+                    <Upload size={12} /> Load .txt / .md
+                  </button>
+                </div>
+                <textarea
+                  className="w-full h-56 text-sm bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 outline-none resize-none placeholder-slate-400 focus:border-slate-400"
+                  placeholder={`Paste anything here — a to-do list, notes, a brain dump...\n\nExamples:\n• "Buy new headphones by Friday"\n• "John owes me $40 for dinner"\n• "Watch Oppenheimer on Netflix"\n• "Goal: Launch my YouTube channel by December"`}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                />
+              </div>
 
-          {error && (
-            <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 mb-4">
-              <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between">
-            <p className="text-xs text-slate-400">Uses Claude Haiku — typically &lt;$0.01 per import</p>
-            <Button onClick={runImport} disabled={!text.trim() || loading || !hasKey} size="md">
-              {loading ? (
-                <>
-                  <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
-                  </svg>
-                  Analyzing...
-                </>
-              ) : (
-                <><Sparkles size={15} /> Import with AI</>
+              {error && (
+                <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 mb-4">
+                  <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
               )}
-            </Button>
-          </div>
-        </>
-      )}
 
-      {phase === 'clarify' && parsed && (
-        <>
-          <div className="mb-4 flex items-center justify-between">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Claude needs a bit more info before importing.</p>
-            <Button variant="secondary" onClick={reset}>Start Over</Button>
-          </div>
-
-          {parsed.questions?.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Clarify Ambiguous Dates</p>
-              <div className="space-y-3">
-                {parsed.questions.map((q, i) => (
-                  <div key={i}>
-                    <p className="text-sm text-slate-600 dark:text-slate-300 mb-1"><span className="font-medium">{q.item}</span> — {q.question}</p>
-                    <input
-                      className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
-                      placeholder="Your answer..."
-                      value={answers[i] || ''}
-                      onChange={(e) => setAnswers((a) => ({ ...a, [i]: e.target.value }))}
-                    />
-                  </div>
-                ))}
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-slate-400">Uses Claude Haiku — typically &lt;$0.01 per import</p>
+                <Button onClick={runImport} disabled={!text.trim() || loading || !hasKey} size="md">
+                  {loading ? (
+                    <>
+                      <svg className="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                      Analyzing...
+                    </>
+                  ) : (
+                    <><Sparkles size={15} /> Import with AI</>
+                  )}
+                </Button>
               </div>
-            </div>
+            </>
           )}
 
-          {parsed.flagged?.length > 0 && (
-            <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Categorize Flagged Items</p>
-              <p className="text-xs text-slate-400 mb-3">Claude wasn't sure where these belong — pick a category for each.</p>
-              <div className="space-y-3">
-                {parsed.flagged.map((f, i) => (
-                  <div key={i} className="border border-slate-100 dark:border-slate-700 rounded-lg p-3">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-0.5">{f.title}</p>
-                    {f.description && <p className="text-xs text-slate-400 mb-2">{f.description}</p>}
-                    <p className="text-xs text-slate-400 mb-2 italic">{f.reason}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(f.suggestedCategories || ['tasks', 'goals', 'ideas']).map((cat) => (
-                        <button
-                          key={cat}
-                          onClick={() => setFlaggedChoices((fc) => ({ ...fc, [i]: cat }))}
-                          className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                            flaggedChoices[i] === cat ? 'text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'
-                          }`}
-                          style={flaggedChoices[i] === cat ? { backgroundColor: 'var(--accent-500)' } : {}}
-                        >
-                          {cat}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+          {phase === 'clarify' && parsed && (
+            <>
+              <div className="mb-4 flex items-center justify-between">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Claude needs a bit more info before importing.</p>
+                <Button variant="secondary" onClick={reset}>Start Over</Button>
               </div>
-            </div>
-          )}
 
-          {error && (
-            <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 mb-4">
-              <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
-              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-            </div>
-          )}
-
-          <div className="flex justify-end">
-            <Button onClick={submitClarifications} disabled={loading}>
-              {loading ? 'Processing...' : <><Check size={14} /> Continue</>}
-            </Button>
-          </div>
-        </>
-      )}
-
-      {phase === 'preview' && parsed && (
-        <>
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-sm text-slate-600 dark:text-slate-300">
-                {totalItems > 0 && <><strong>{totalItems}</strong> item{totalItems !== 1 ? 's' : ''} to add{parsed?.removals?.length > 0 ? ' · ' : '.'}</>}
-                {parsed?.removals?.length > 0 && (
-                  <span className="text-red-500 font-medium">
-                    {parsed.removals.filter((_, i) => confirmedRemovals[i]).length} deletion{parsed.removals.filter((_, i) => confirmedRemovals[i]).length !== 1 ? 's' : ''} queued.
-                  </span>
-                )}
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={reset}>Start Over</Button>
-              <Button onClick={acceptAll} disabled={totalItems === 0 && !Object.values(confirmedRemovals).some(Boolean)}>
-                <Check size={14} /> Accept All
-              </Button>
-            </div>
-          </div>
-
-          <SectionPreview title="Tasks" count={d.tasks?.length || 0}>
-            {d.tasks?.map((t, i) => (
-              <PreviewItem key={i} text={t.title} sub={[t.dueDate, t.priority !== 'none' && t.priority].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Calendar Events" count={d.calendar?.length || 0}>
-            {d.calendar?.map((e, i) => (
-              <PreviewItem key={i} text={e.title} sub={[e.date, e.time].filter(Boolean).join(' at ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Goals" count={d.goals?.length || 0}>
-            {d.goals?.map((g, i) => (
-              <PreviewItem key={i} text={g.title} sub={[g.description, g.targetDate].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Projects" count={d.projects?.length || 0}>
-            {d.projects?.map((p, i) => (
-              <PreviewItem key={i} text={p.title} sub={[p.tag, p.subtasks?.length ? `${p.subtasks.length} subtasks` : null].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Deadlines" count={d.deadlines?.length || 0}>
-            {d.deadlines?.map((dl, i) => (
-              <PreviewItem key={i} text={dl.title} sub={[dl.category, dl.endDate].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Ideas (New)" count={d.ideas?.length || 0}>
-            {d.ideas?.map((idea, i) => (
-              <PreviewItem key={i} text={idea.title} sub={[idea.category, idea.status].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          {ideaUpdates.length > 0 && (
-            <SectionPreview title="Ideas (Updates to Existing)" count={ideaUpdates.length}>
-              {ideaUpdates.map((upd, i) => (
-                <div key={i} className="flex items-start gap-2">
-                  <RefreshCw size={13} className="mt-0.5 shrink-0 text-blue-400" />
-                  <div>
-                    <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">{upd.existingTitle}</p>
-                    <p className="text-xs text-slate-400 mt-0.5 italic">"{upd.appendText}"</p>
+              {parsed.questions?.length > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Clarify Ambiguous Dates</p>
+                  <div className="space-y-3">
+                    {parsed.questions.map((q, i) => (
+                      <div key={i}>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 mb-1"><span className="font-medium">{q.item}</span> — {q.question}</p>
+                        <input
+                          className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+                          placeholder="Your answer..."
+                          value={answers[i] || ''}
+                          onChange={(e) => setAnswers((a) => ({ ...a, [i]: e.target.value }))}
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
-            </SectionPreview>
+              )}
+
+              {parsed.flagged?.length > 0 && (
+                <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
+                  <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Categorize Flagged Items</p>
+                  <p className="text-xs text-slate-400 mb-3">Claude wasn't sure where these belong — pick a category for each.</p>
+                  <div className="space-y-3">
+                    {parsed.flagged.map((f, i) => (
+                      <div key={i} className="border border-slate-100 dark:border-slate-700 rounded-lg p-3">
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-0.5">{f.title}</p>
+                        {f.description && <p className="text-xs text-slate-400 mb-2">{f.description}</p>}
+                        <p className="text-xs text-slate-400 mb-2 italic">{f.reason}</p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(f.suggestedCategories || ['tasks', 'goals', 'ideas']).map((cat) => (
+                            <button
+                              key={cat}
+                              onClick={() => setFlaggedChoices((fc) => ({ ...fc, [i]: cat }))}
+                              className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${flaggedChoices[i] === cat ? 'text-white' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}
+                              style={flaggedChoices[i] === cat ? { backgroundColor: 'var(--accent-500)' } : {}}
+                            >
+                              {cat}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="flex items-start gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-xl p-3 mb-4">
+                  <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button onClick={submitClarifications} disabled={loading}>
+                  {loading ? 'Processing...' : <><Check size={14} /> Continue</>}
+                </Button>
+              </div>
+            </>
           )}
 
-          <SectionPreview title="Want List" count={d.wantList?.length || 0}>
-            {d.wantList?.map((item, i) => (
-              <PreviewItem key={i} text={item.title} sub={item.priority} />
-            ))}
-          </SectionPreview>
+          {phase === 'preview' && parsed && (
+            <>
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    {totalItems > 0 && <><strong>{totalItems}</strong> item{totalItems !== 1 ? 's' : ''} to add{parsed?.removals?.length > 0 ? ' · ' : '.'}</>}
+                    {parsed?.removals?.length > 0 && (
+                      <span className="text-red-500 font-medium">
+                        {parsed.removals.filter((_, i) => confirmedRemovals[i]).length} deletion{parsed.removals.filter((_, i) => confirmedRemovals[i]).length !== 1 ? 's' : ''} queued.
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="secondary" onClick={reset}>Start Over</Button>
+                  <Button onClick={acceptAll} disabled={totalItems === 0 && !Object.values(confirmedRemovals).some(Boolean)}>
+                    <Check size={14} /> Accept All
+                  </Button>
+                </div>
+              </div>
 
-          {/* Removals warning block */}
-          {parsed.removals?.length > 0 && (
-            <div className="border-2 border-red-400 dark:border-red-700 rounded-xl overflow-hidden mb-3">
-              <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20">
-                <Trash2 size={14} className="text-red-500 shrink-0" />
-                <p className="text-sm font-semibold text-red-600 dark:text-red-400">
-                  Removals — {parsed.removals.filter((_, i) => confirmedRemovals[i]).length} of {parsed.removals.length} selected
-                </p>
-              </div>
-              <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-200 dark:border-amber-800">
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Warning: checked items will be permanently deleted when you click Accept. Uncheck anything you want to keep.
-                </p>
-              </div>
-              <div className="px-4 py-3 space-y-2">
-                {parsed.removals.map((r, i) => (
-                  <label key={i} className="flex items-start gap-3 cursor-pointer group">
-                    <div
-                      className={`mt-0.5 w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
-                        confirmedRemovals[i] ? 'border-red-500 bg-red-500' : 'border-slate-300 dark:border-slate-500'
-                      }`}
-                      onClick={() => setConfirmedRemovals((c) => ({ ...c, [i]: !c[i] }))}
-                    >
-                      {confirmedRemovals[i] && <Check size={10} className="text-white" />}
+              <SectionPreview title="Tasks" count={d.tasks?.length || 0}>
+                {d.tasks?.map((t, i) => <PreviewItem key={i} text={t.title} sub={[t.dueDate, t.priority !== 'none' && t.priority].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Calendar Events" count={d.calendar?.length || 0}>
+                {d.calendar?.map((e, i) => <PreviewItem key={i} text={e.title} sub={[e.date, e.time].filter(Boolean).join(' at ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Goals" count={d.goals?.length || 0}>
+                {d.goals?.map((g, i) => <PreviewItem key={i} text={g.title} sub={[g.description, g.targetDate].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Projects" count={d.projects?.length || 0}>
+                {d.projects?.map((p, i) => <PreviewItem key={i} text={p.title} sub={[p.tag, p.subtasks?.length ? `${p.subtasks.length} subtasks` : null].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Deadlines" count={d.deadlines?.length || 0}>
+                {d.deadlines?.map((dl, i) => <PreviewItem key={i} text={dl.title} sub={[dl.category, dl.endDate].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Ideas (New)" count={d.ideas?.length || 0}>
+                {d.ideas?.map((idea, i) => <PreviewItem key={i} text={idea.title} sub={[idea.category, idea.status].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              {ideaUpdates.length > 0 && (
+                <SectionPreview title="Ideas (Updates to Existing)" count={ideaUpdates.length}>
+                  {ideaUpdates.map((upd, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <RefreshCw size={13} className="mt-0.5 shrink-0 text-blue-400" />
+                      <div>
+                        <p className="text-sm text-slate-700 dark:text-slate-200 font-medium">{upd.existingTitle}</p>
+                        <p className="text-xs text-slate-400 mt-0.5 italic">"{upd.appendText}"</p>
+                      </div>
                     </div>
-                    <div className="flex-1" onClick={() => setConfirmedRemovals((c) => ({ ...c, [i]: !c[i] }))}>
-                      <p className="text-sm text-slate-700 dark:text-slate-200">
-                        <span className="font-medium">{r.title}</span>
-                        <span className="text-xs text-slate-400 ml-2 capitalize">({r.section.replace('watchlist.', '').replace('moneyTracker.', '')})</span>
-                      </p>
-                      {r.reason && <p className="text-xs text-slate-400 mt-0.5">{r.reason}</p>}
-                    </div>
-                  </label>
-                ))}
+                  ))}
+                </SectionPreview>
+              )}
+              <SectionPreview title="Want List" count={d.wantList?.length || 0}>
+                {d.wantList?.map((item, i) => <PreviewItem key={i} text={item.title} sub={item.priority} />)}
+              </SectionPreview>
+
+              {parsed.removals?.length > 0 && (
+                <div className="border-2 border-red-400 dark:border-red-700 rounded-xl overflow-hidden mb-3">
+                  <div className="flex items-center gap-2 px-4 py-3 bg-red-50 dark:bg-red-900/20">
+                    <Trash2 size={14} className="text-red-500 shrink-0" />
+                    <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                      Removals — {parsed.removals.filter((_, i) => confirmedRemovals[i]).length} of {parsed.removals.length} selected
+                    </p>
+                  </div>
+                  <div className="px-4 py-2 bg-amber-50 dark:bg-amber-900/10 border-b border-amber-200 dark:border-amber-800">
+                    <p className="text-xs text-amber-700 dark:text-amber-400">Warning: checked items will be permanently deleted when you click Accept. Uncheck anything you want to keep.</p>
+                  </div>
+                  <div className="px-4 py-3 space-y-2">
+                    {parsed.removals.map((r, i) => (
+                      <label key={i} className="flex items-start gap-3 cursor-pointer group">
+                        <div
+                          className={`mt-0.5 w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${confirmedRemovals[i] ? 'border-red-500 bg-red-500' : 'border-slate-300 dark:border-slate-500'}`}
+                          onClick={() => setConfirmedRemovals((c) => ({ ...c, [i]: !c[i] }))}
+                        >
+                          {confirmedRemovals[i] && <Check size={10} className="text-white" />}
+                        </div>
+                        <div className="flex-1" onClick={() => setConfirmedRemovals((c) => ({ ...c, [i]: !c[i] }))}>
+                          <p className="text-sm text-slate-700 dark:text-slate-200">
+                            <span className="font-medium">{r.title}</span>
+                            <span className="text-xs text-slate-400 ml-2 capitalize">({r.section.replace('watchlist.', '').replace('moneyTracker.', '')})</span>
+                          </p>
+                          {r.reason && <p className="text-xs text-slate-400 mt-0.5">{r.reason}</p>}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <SectionPreview title="Subscriptions" count={d.subscriptions?.length || 0}>
+                {d.subscriptions?.map((s, i) => <PreviewItem key={i} text={s.name} sub={[`$${s.cost}/${s.cycle === 'annual' ? 'yr' : 'mo'}`, s.category, s.renewDate].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Workout Sessions" count={d.workouts?.length || 0}>
+                {d.workouts?.map((w, i) => <PreviewItem key={i} text={w.name} sub={w.exercises?.length ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}: ${w.exercises.map(e => e.name).join(', ')}` : 'No exercises'} />)}
+              </SectionPreview>
+              <SectionPreview title="Games" count={d.watchlist?.games?.length || 0}>
+                {d.watchlist?.games?.map((g, i) => <PreviewItem key={i} text={g.title} sub={[g.platform, g.status].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="Shows / Movies" count={d.watchlist?.shows?.length || 0}>
+                {d.watchlist?.shows?.map((s, i) => <PreviewItem key={i} text={s.title} sub={[s.service, s.status].filter(Boolean).join(' · ')} />)}
+              </SectionPreview>
+              <SectionPreview title="People Who Owe Me" count={d.moneyTracker?.owed?.length || 0}>
+                {d.moneyTracker?.owed?.map((o, i) => <PreviewItem key={i} text={`${o.person} — $${o.amount}`} sub={o.reason} />)}
+              </SectionPreview>
+              <SectionPreview title="Money Coming My Way" count={d.moneyTracker?.incoming?.length || 0}>
+                {d.moneyTracker?.incoming?.map((inc, i) => <PreviewItem key={i} text={`${inc.source} — $${inc.amount}`} sub={inc.reason} />)}
+              </SectionPreview>
+            </>
+          )}
+
+          {phase === 'done' && (
+            <div className="text-center py-16">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--accent-100)' }}>
+                <Check size={24} style={{ color: 'var(--accent-600)' }} />
               </div>
+              <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-1">All done!</p>
+              <p className="text-sm text-slate-400 mb-6">{totalItems} items added to your app.</p>
+              <Button onClick={reset}>Import More</Button>
             </div>
           )}
-
-          <SectionPreview title="Subscriptions" count={d.subscriptions?.length || 0}>
-            {d.subscriptions?.map((s, i) => (
-              <PreviewItem key={i} text={s.name} sub={[`$${s.cost}/${s.cycle === 'annual' ? 'yr' : 'mo'}`, s.category, s.renewDate].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Workout Sessions" count={d.workouts?.length || 0}>
-            {d.workouts?.map((w, i) => (
-              <PreviewItem key={i} text={w.name} sub={w.exercises?.length ? `${w.exercises.length} exercise${w.exercises.length !== 1 ? 's' : ''}: ${w.exercises.map(e => e.name).join(', ')}` : 'No exercises'} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Games" count={d.watchlist?.games?.length || 0}>
-            {d.watchlist?.games?.map((g, i) => (
-              <PreviewItem key={i} text={g.title} sub={[g.platform, g.status].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Shows / Movies" count={d.watchlist?.shows?.length || 0}>
-            {d.watchlist?.shows?.map((s, i) => (
-              <PreviewItem key={i} text={s.title} sub={[s.service, s.status].filter(Boolean).join(' · ')} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="People Who Owe Me" count={d.moneyTracker?.owed?.length || 0}>
-            {d.moneyTracker?.owed?.map((o, i) => (
-              <PreviewItem key={i} text={`${o.person} — $${o.amount}`} sub={o.reason} />
-            ))}
-          </SectionPreview>
-
-          <SectionPreview title="Money Coming My Way" count={d.moneyTracker?.incoming?.length || 0}>
-            {d.moneyTracker?.incoming?.map((inc, i) => (
-              <PreviewItem key={i} text={`${inc.source} — $${inc.amount}`} sub={inc.reason} />
-            ))}
-          </SectionPreview>
         </>
-      )}
-
-      {phase === 'done' && (
-        <div className="text-center py-16">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--accent-100)' }}>
-            <Check size={24} style={{ color: 'var(--accent-600)' }} />
-          </div>
-          <p className="text-lg font-semibold text-slate-700 dark:text-slate-200 mb-1">All done!</p>
-          <p className="text-sm text-slate-400 mb-6">{totalItems} items added to your app.</p>
-          <Button onClick={reset}>Import More</Button>
-        </div>
       )}
     </div>
   )

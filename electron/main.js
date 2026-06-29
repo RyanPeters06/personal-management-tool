@@ -18,11 +18,11 @@ function createWindow() {
     },
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: '#f8fafc',
-      symbolColor: '#475569',
+      color: '#0f172a',
+      symbolColor: '#94a3b8',
       height: 32,
     },
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#0f172a',
   })
 
   if (isDev) {

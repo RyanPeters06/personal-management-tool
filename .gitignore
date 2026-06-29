@@ -41,3 +41,7 @@ npm-debug.log*
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Device-specific launchers (contain hardcoded local paths)
+launch.bat
+launch.vbs

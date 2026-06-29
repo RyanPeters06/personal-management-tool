@@ -23,7 +23,7 @@ function EmptyState({ label }) {
 }
 
 export default function Dashboard({ onNavigate }) {
-  const { todos, finance, calendar, goals, projects } = useStore()
+  const { todos, finance, calendar, projects } = useStore()
 
   const today = new Date()
 
@@ -57,11 +57,6 @@ export default function Dashboard({ onNavigate }) {
         .filter((s) => s.daysLeft >= 0 && s.daysLeft <= 7)
         .sort((a, b) => a.daysLeft - b.daysLeft),
     [finance]
-  )
-
-  const activeGoals = useMemo(
-    () => goals.filter((g) => g.status === 'active').slice(0, 4),
-    [goals]
   )
 
   const activeProjects = useMemo(
@@ -138,7 +133,7 @@ export default function Dashboard({ onNavigate }) {
 
       {/* Row 2: Active Projects + Subscriptions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <DashCard title="Active Projects" icon={Target} onClick={() => onNavigate('goals')}>
+        <DashCard title="Active Projects" icon={Target} onClick={() => onNavigate('projects')}>
           {activeProjects.length === 0 ? (
             <EmptyState label="No active projects" />
           ) : (
@@ -192,32 +187,6 @@ export default function Dashboard({ onNavigate }) {
         </DashCard>
       </div>
 
-      {/* Row 3: Goals */}
-      {activeGoals.length > 0 && (
-        <DashCard title="Goals" icon={Target} onClick={() => onNavigate('goals')}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {activeGoals.map((g) => (
-              <div key={g.id}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">{g.title}</span>
-                  <span className="text-xs text-slate-400 ml-2 shrink-0">{g.progress}%</span>
-                </div>
-                <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-700">
-                  <div
-                    className="h-1.5 rounded-full transition-all"
-                    style={{ width: `${g.progress}%`, backgroundColor: 'var(--accent-500)' }}
-                  />
-                </div>
-                {g.targetDate && (
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    Due {format(parseISO(g.targetDate), 'MMM d, yyyy')}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </DashCard>
-      )}
     </div>
   )
 }

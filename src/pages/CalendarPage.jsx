@@ -3,9 +3,10 @@ import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
-import { Plus, Trash2, Pencil, ChevronLeft, ChevronRight, List, Grid } from 'lucide-react'
+import { Plus, Trash2, Pencil, ChevronLeft, ChevronRight, List, Grid, Clock, Check } from 'lucide-react'
+import { differenceInDays, isPast } from 'date-fns'
 import {
-  format, startOfMonth, endOfMonth, eachDayOfInterval, getDay,
+  format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameMonth, isToday, parseISO, isSameDay, startOfWeek, endOfWeek,
 } from 'date-fns'
 
@@ -91,11 +92,62 @@ const TYPE_DOT = {
   task: '#f59e0b',
 }
 
+const DEADLINE_CATS = ['sale', 'offer', 'event', 'other']
+const CAT_COLORS = { sale: 'orange', offer: 'green', event: 'blue', other: 'slate' }
+
+function DeadlineForm({ initial, onSave, onCancel }) {
+  const [form, setForm] = useState(initial || { title: '', endDate: '', notes: '', category: 'other' })
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  return (
+    <div className="space-y-3">
+      <div>
+        <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Title</label>
+        <input autoFocus className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+          placeholder="e.g. Steam sale ends, Amazon promo expires" value={form.title} onChange={(e) => set('title', e.target.value)} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">End Date</label>
+          <input type="date" className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
+            value={form.endDate} onChange={(e) => set('endDate', e.target.value)} />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Category</label>
+          <select className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
+            value={form.category} onChange={(e) => set('category', e.target.value)}>
+            {DEADLINE_CATS.map((c) => <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>)}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Notes (optional)</label>
+        <input className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
+          value={form.notes} onChange={(e) => set('notes', e.target.value)} />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button onClick={() => onSave(form)} disabled={!form.title || !form.endDate}>Save</Button>
+      </div>
+    </div>
+  )
+}
+
+function countdownLabel(endDate) {
+  const parsed = parseISO(endDate)
+  const days = differenceInDays(parsed, new Date())
+  if (isPast(parsed) && !isToday(parsed)) return { label: 'Expired', color: 'text-slate-400' }
+  if (days === 0) return { label: 'Ends today!', color: 'text-red-500 font-semibold' }
+  if (days <= 3) return { label: `${days}d left`, color: 'text-yellow-500 font-semibold' }
+  return { label: `${days}d left`, color: 'text-green-600 dark:text-green-400' }
+}
+
 export default function CalendarPage() {
-  const { calendar, deadlines, goals, tasks, addEvent, updateEvent, deleteEvent } = useStore()
+  const { calendar, deadlines, tasks, addEvent, updateEvent, deleteEvent, addDeadline, updateDeadline, deleteDeadline } = useStore()
   const [viewMode, setViewMode] = useState('grid')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showAdd, setShowAdd] = useState(false)
+  const [showAddDeadline, setShowAddDeadline] = useState(false)
+  const [editDeadline, setEditDeadline] = useState(null)
   const [selectedDate, setSelectedDate] = useState(null)
   const [editEvent, setEditEvent] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
@@ -116,10 +168,15 @@ export default function CalendarPage() {
     }
     calendar.events.forEach((e) => push(e.date, { ...e, _type: 'event', _label: e.title }))
     deadlines?.forEach((d) => !d.done && push(d.endDate, { ...d, _type: 'deadline', _label: d.title }))
-    goals?.forEach((g) => g.targetDate && g.status !== 'done' && push(g.targetDate, { ...g, _type: 'goal', _label: g.title }))
     tasks?.forEach((t) => t.dueDate && !t.done && push(t.dueDate, { ...t, _type: 'task', _label: t.title }))
     return map
-  }, [calendar.events, deadlines, goals, tasks])
+  }, [calendar.events, deadlines, tasks])
+
+  const sortedDeadlines = useMemo(() =>
+    [...(deadlines || [])].sort((a, b) => {
+      if (a.done !== b.done) return a.done ? 1 : -1
+      return a.endDate.localeCompare(b.endDate)
+    }), [deadlines])
 
   const sortedEvents = useMemo(
     () => [...calendar.events].sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
@@ -152,6 +209,9 @@ export default function CalendarPage() {
                 <List size={15} />
               </button>
             </div>
+            <Button variant="secondary" onClick={() => setShowAddDeadline(true)}>
+              <Clock size={14} /> Add Deadline
+            </Button>
             <Button onClick={() => setShowAdd(true)}>
               <Plus size={14} /> Add Event
             </Button>
@@ -226,12 +286,47 @@ export default function CalendarPage() {
       {/* Legend */}
       {viewMode === 'grid' && (
         <div className="flex gap-4 mt-3 flex-wrap">
-          {[['event', 'Events'], ['deadline', 'Deadlines'], ['goal', 'Goal Targets'], ['task', 'Tasks']].map(([type, label]) => (
+          {[['event', 'Events'], ['deadline', 'Deadlines'], ['task', 'Tasks']].map(([type, label]) => (
             <div key={type} className="flex items-center gap-1.5">
               <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: TYPE_DOT[type] }} />
               <span className="text-xs text-slate-400">{label}</span>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Deadlines list */}
+      {sortedDeadlines.length > 0 && (
+        <div className="mt-6">
+          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Deadlines</p>
+          <div className="space-y-2">
+            {sortedDeadlines.map((d) => {
+              const cd = d.endDate ? countdownLabel(d.endDate) : null
+              return (
+                <div key={d.id} className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-center gap-3 group ${d.done ? 'opacity-50' : ''}`}>
+                  <button
+                    onClick={() => updateDeadline(d.id, { done: !d.done })}
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${d.done ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-500'}`}
+                    style={d.done ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
+                  >
+                    {d.done && <Check size={11} />}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-sm font-medium text-slate-700 dark:text-slate-200 truncate ${d.done ? 'line-through' : ''}`}>{d.title}</p>
+                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                      {d.endDate && <span className="text-xs text-slate-400 shrink-0">{format(parseISO(d.endDate), 'MMM d, yyyy')}</span>}
+                      {d.notes && <span className="text-xs text-slate-400 truncate">· {d.notes}</span>}
+                    </div>
+                  </div>
+                  {cd && !d.done && <span className={`text-xs shrink-0 ${cd.color}`}>{cd.label}</span>}
+                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button onClick={() => setEditDeadline(d)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={13} /></button>
+                    <button onClick={() => deleteDeadline(d.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
@@ -313,6 +408,25 @@ export default function CalendarPage() {
             initial={editEvent}
             onSave={(f) => { updateEvent(editEvent.id, f); setEditEvent(null) }}
             onCancel={() => setEditEvent(null)}
+          />
+        </Modal>
+      )}
+
+      {showAddDeadline && (
+        <Modal title="Add Deadline" onClose={() => setShowAddDeadline(false)}>
+          <DeadlineForm
+            onSave={(f) => { addDeadline(f); setShowAddDeadline(false) }}
+            onCancel={() => setShowAddDeadline(false)}
+          />
+        </Modal>
+      )}
+
+      {editDeadline && (
+        <Modal title="Edit Deadline" onClose={() => setEditDeadline(null)}>
+          <DeadlineForm
+            initial={editDeadline}
+            onSave={(f) => { updateDeadline(editDeadline.id, f); setEditDeadline(null) }}
+            onCancel={() => setEditDeadline(null)}
           />
         </Modal>
       )}

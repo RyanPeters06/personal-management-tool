@@ -106,6 +106,80 @@ function WantItemForm({ initial, onSave, onCancel }) {
   )
 }
 
+function WantItemCard({ item, onEdit, onDelete, onMarkBought }) {
+  const [showLinks, setShowLinks] = useState(false)
+  const linkCount = item.options?.filter((o) => o.url).length || 0
+
+  return (
+    <div className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 group ${item.purchased ? 'opacity-60' : ''}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            {item.purchased && (
+              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 font-medium shrink-0">Bought</span>
+            )}
+            <p className={`text-sm font-medium min-w-0 truncate ${item.purchased ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+              {item.title}
+            </p>
+            <Badge color={PRIORITY_COLORS[item.priority]} label={item.priority} />
+          </div>
+          {item.notes && <p className="text-xs text-slate-400 mt-1">{item.notes}</p>}
+          {item.tags?.length > 0 && (
+            <div className="flex gap-1 mt-2 flex-wrap">
+              {item.tags.map((t) => (
+                <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t)}`}>{t}</span>
+              ))}
+            </div>
+          )}
+          {linkCount > 0 && (
+            <div className="mt-2">
+              <button
+                onClick={() => setShowLinks(!showLinks)}
+                className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              >
+                <ExternalLink size={10} />
+                {linkCount} {linkCount === 1 ? 'link' : 'links'}
+                {showLinks ? <span className="ml-0.5">▲</span> : <span className="ml-0.5">▼</span>}
+              </button>
+              {showLinks && (
+                <div className="mt-1.5 space-y-1 pl-1">
+                  {item.options.filter((o) => o.url).map((opt, i) => (
+                    <a
+                      key={i}
+                      href={opt.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-400 transition-colors"
+                    >
+                      <ExternalLink size={10} className="shrink-0" />
+                      <span className="flex-1 min-w-0 truncate">{opt.label || `Option ${i + 1}`}</span>
+                      {opt.price && <span className="text-slate-400 shrink-0">{opt.price}</span>}
+                    </a>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col items-end gap-1.5 shrink-0">
+          {!item.purchased && (
+            <button
+              onClick={onMarkBought}
+              className="text-xs px-2.5 py-1 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 transition-colors font-medium flex items-center gap-1"
+            >
+              <Check size={10} /> Bought
+            </button>
+          )}
+          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={onEdit} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={13} /></button>
+            <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function WantList() {
   const { wantList, addWantItem, updateWantItem, deleteWantItem } = useStore()
   const [filter, setFilter] = useState('all')
@@ -154,62 +228,13 @@ export default function WantList() {
 
       <div className="space-y-3">
         {filtered.map((item) => (
-          <div
+          <WantItemCard
             key={item.id}
-            className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 group ${item.purchased ? 'opacity-60' : ''}`}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex items-start gap-3 flex-1 min-w-0">
-                <button
-                  onClick={() => updateWantItem(item.id, { purchased: !item.purchased })}
-                  className={`mt-0.5 w-5 h-5 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
-                    item.purchased ? 'border-transparent' : 'border-slate-300 dark:border-slate-500'
-                  }`}
-                  style={item.purchased ? { backgroundColor: 'var(--accent-500)' } : {}}
-                  title={item.purchased ? 'Mark as pending' : 'Mark as purchased'}
-                >
-                  {item.purchased && <Check size={11} className="text-white" />}
-                </button>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className={`text-sm font-medium ${item.purchased ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                      {item.title}
-                    </p>
-                    <Badge color={PRIORITY_COLORS[item.priority]}>{item.priority}</Badge>
-                  </div>
-                  {item.notes && <p className="text-xs text-slate-400 mt-1">{item.notes}</p>}
-                  {item.options?.filter((o) => o.url).length > 0 && (
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {item.options.filter((o) => o.url).map((opt, i) => (
-                        <a
-                          key={i}
-                          href={opt.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-600 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:border-slate-400 transition-colors"
-                        >
-                          <ExternalLink size={10} />
-                          {opt.label || `Option ${i + 1}`}
-                          {opt.price && <span className="text-slate-400">· {opt.price}</span>}
-                        </a>
-                      ))}
-                    </div>
-                  )}
-                  {item.tags?.length > 0 && (
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      {item.tags.map((t) => (
-                        <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t)}`}>{t}</span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                <button onClick={() => setEditItem(item)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={13} /></button>
-                <button onClick={() => deleteWantItem(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
-              </div>
-            </div>
-          </div>
+            item={item}
+            onEdit={() => setEditItem(item)}
+            onDelete={() => deleteWantItem(item.id)}
+            onMarkBought={() => updateWantItem(item.id, { purchased: true })}
+          />
         ))}
       </div>
 

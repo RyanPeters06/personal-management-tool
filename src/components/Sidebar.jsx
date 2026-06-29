@@ -1,11 +1,8 @@
 import useStore from '../store/useStore'
 import {
   LayoutDashboard,
-  CheckSquare,
   DollarSign,
   Calendar,
-  Target,
-  Clock,
   Sparkles,
   Settings,
   ChevronLeft,
@@ -14,19 +11,25 @@ import {
   Lightbulb,
   ListTodo,
   Dumbbell,
+  Briefcase,
+  FolderKanban,
+  Tv,
+  BookOpen,
 } from 'lucide-react'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'tasks', label: 'Tasks', icon: ListTodo },
+  { id: 'projects', label: 'Projects', icon: FolderKanban },
+  { id: 'side-hustles', label: 'Side Hustles', icon: Briefcase },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
-  { id: 'goals', label: 'Goals & Projects', icon: Target },
-  { id: 'tracking', label: 'Tracking', icon: Clock },
+  { id: 'library', label: 'Library', icon: Tv },
   { id: 'workouts', label: 'Workouts', icon: Dumbbell },
   { id: 'want-list', label: 'Want List', icon: ShoppingCart },
   { id: 'ideas', label: 'Ideas', icon: Lightbulb },
-  { id: 'ai-import', label: 'AI Import', icon: Sparkles },
+  { id: 'journal', label: 'Journal', icon: BookOpen },
+  { id: 'assistant', label: 'Assistant', icon: Sparkles },
 ]
 
 export default function Sidebar({ currentPage, onNavigate }) {
@@ -38,10 +41,7 @@ export default function Sidebar({ currentPage, onNavigate }) {
       className={`flex flex-col shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all duration-200 ${collapsed ? 'w-14' : 'w-52'}`}
     >
       {/* Logo / Title */}
-      <div className={`flex items-center gap-2 px-3 py-4 border-b border-slate-100 dark:border-slate-700 ${collapsed ? 'justify-center' : ''}`}>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: 'var(--accent-500)' }}>
-          <span className="text-white text-xs font-bold">LM</span>
-        </div>
+      <div className={`flex items-center px-3 py-4 border-b border-slate-100 dark:border-slate-700 ${collapsed ? 'justify-center' : ''}`}>
         {!collapsed && (
           <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">Life Manager</span>
         )}

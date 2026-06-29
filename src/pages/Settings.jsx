@@ -2,7 +2,7 @@ import { useState } from 'react'
 import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
-import { Moon, Sun, Eye, EyeOff, Trash2, X, Plus } from 'lucide-react'
+import { Moon, Sun, Eye, EyeOff, Trash2, X, Plus, Download } from 'lucide-react'
 
 const ACCENTS = [
   { id: 'slate', label: 'Sky Blue', color: '#0ea5e9' },
@@ -12,11 +12,13 @@ const ACCENTS = [
 ]
 
 export default function Settings() {
-  const { settings, updateSettings, addCustomTag, removeCustomTag, wipeAllData } = useStore()
+  const { settings, updateSettings, addCustomTag, removeCustomTag, wipeAllData, restoreFromBackup } = useStore()
   const [showKey, setShowKey] = useState(false)
   const [keyDraft, setKeyDraft] = useState(settings.claudeApiKey || '')
   const [newTag, setNewTag] = useState('')
   const [confirmWipe, setConfirmWipe] = useState(false)
+  const [restoreError, setRestoreError] = useState('')
+  const [restoreSuccess, setRestoreSuccess] = useState(false)
 
   return (
     <div className="p-6 max-w-lg mx-auto">
@@ -125,6 +127,76 @@ export default function Settings() {
             <Plus size={14} /> Add
           </Button>
         </div>
+      </div>
+
+      {/* Export & Backup */}
+      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Export & Restore</p>
+        <p className="text-xs text-slate-400 mb-4">Back up everything — or restore from a backup file to get your data on a new device.</p>
+
+        <div className="flex gap-2 flex-wrap">
+          <button
+            onClick={() => {
+              const s = useStore.getState()
+              const data = {
+                todos: s.todos, finance: s.finance, calendar: s.calendar,
+                goals: s.goals, projects: s.projects, deadlines: s.deadlines,
+                watchlist: s.watchlist, tasks: s.tasks, wantList: s.wantList,
+                ideas: s.ideas, workouts: s.workouts, journal: s.journal,
+                settings: s.settings,
+                exportedAt: new Date().toISOString(),
+              }
+              const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+              const url = URL.createObjectURL(blob)
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `life-manager-backup-${new Date().toISOString().slice(0, 10)}.json`
+              a.click()
+              URL.revokeObjectURL(url)
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            <Download size={14} /> Export All Data
+          </button>
+
+          <button
+            onClick={() => {
+              setRestoreError('')
+              setRestoreSuccess(false)
+              const input = document.createElement('input')
+              input.type = 'file'
+              input.accept = '.json'
+              input.onchange = (e) => {
+                const file = e.target.files[0]
+                if (!file) return
+                const reader = new FileReader()
+                reader.onload = (ev) => {
+                  try {
+                    const data = JSON.parse(ev.target.result)
+                    if (!data || typeof data !== 'object') throw new Error('Invalid backup file.')
+                    restoreFromBackup(data)
+                    setRestoreSuccess(true)
+                    setTimeout(() => setRestoreSuccess(false), 4000)
+                  } catch {
+                    setRestoreError('Could not read backup file. Make sure it\'s a valid Life Manager export.')
+                  }
+                }
+                reader.readAsText(file)
+              }
+              input.click()
+            }}
+            className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+          >
+            <Download size={14} className="rotate-180" /> Restore from Backup
+          </button>
+        </div>
+
+        {restoreSuccess && (
+          <p className="text-xs text-green-600 dark:text-green-400 mt-3">✓ Data restored successfully.</p>
+        )}
+        {restoreError && (
+          <p className="text-xs text-red-500 mt-3">{restoreError}</p>
+        )}
       </div>
 
       {/* Wipe Data */}

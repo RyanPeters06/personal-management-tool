@@ -44,6 +44,7 @@ const defaultData = {
     subscriptions: [],
     income: 0,
     expenses: [],
+    notes: '',
     moneyTracker: {
       owed: [],
       incoming: [],
@@ -65,6 +66,9 @@ const defaultData = {
   workouts: {
     sessions: [],
     logs: [],
+  },
+  journal: {
+    entries: [],
   },
   settings: {
     darkMode: false,
@@ -120,6 +124,11 @@ const useStore = create((set, get) => ({
       projects: s.projects,
       deadlines: s.deadlines,
       watchlist: s.watchlist,
+      tasks: s.tasks,
+      wantList: s.wantList,
+      ideas: s.ideas,
+      workouts: s.workouts,
+      journal: s.journal,
       settings: s.settings,
     }
     if (window.electronAPI) {
@@ -225,6 +234,12 @@ const useStore = create((set, get) => ({
         ),
       },
     }))
+    get().save()
+  },
+
+  // ── FINANCE NOTES ──
+  updateFinanceNotes: (notes) => {
+    set((s) => ({ finance: { ...s.finance, notes } }))
     get().save()
   },
 
@@ -532,6 +547,8 @@ const useStore = create((set, get) => ({
       platform: game.platform || '',
       status: game.status || 'want',
       notes: game.notes || '',
+      isSeries: game.isSeries || false,
+      subGames: game.subGames || [],
       addedAt: new Date().toISOString(),
     }
     set((s) => ({
@@ -555,6 +572,41 @@ const useStore = create((set, get) => ({
       watchlist: {
         ...s.watchlist,
         games: s.watchlist.games.filter((g) => g.id !== id),
+      },
+    }))
+    get().save()
+  },
+
+  addSubGame: (gameId, subGame) => {
+    const item = { id: generateId(), title: subGame.title, platform: subGame.platform || '', status: subGame.status || 'want', notes: subGame.notes || '' }
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        games: s.watchlist.games.map((g) => g.id === gameId ? { ...g, subGames: [...(g.subGames || []), item] } : g),
+      },
+    }))
+    get().save()
+  },
+
+  updateSubGame: (gameId, subGameId, patch) => {
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        games: s.watchlist.games.map((g) => g.id === gameId
+          ? { ...g, subGames: (g.subGames || []).map((sg) => sg.id === subGameId ? { ...sg, ...patch } : sg) }
+          : g),
+      },
+    }))
+    get().save()
+  },
+
+  deleteSubGame: (gameId, subGameId) => {
+    set((s) => ({
+      watchlist: {
+        ...s.watchlist,
+        games: s.watchlist.games.map((g) => g.id === gameId
+          ? { ...g, subGames: (g.subGames || []).filter((sg) => sg.id !== subGameId) }
+          : g),
       },
     }))
     get().save()
@@ -691,6 +743,31 @@ const useStore = create((set, get) => ({
   },
   deleteLog: (id) => {
     set((s) => ({ workouts: { ...s.workouts, logs: s.workouts.logs.filter((l) => l.id !== id) } }))
+    get().save()
+  },
+
+  // ── JOURNAL ──
+  upsertJournalEntry: (date, content) => {
+    const entries = get().journal.entries
+    const existing = entries.find((e) => e.date === date)
+    if (existing) {
+      set((s) => ({ journal: { entries: s.journal.entries.map((e) => e.date === date ? { ...e, content, updatedAt: new Date().toISOString() } : e) } }))
+    } else {
+      const item = { id: generateId(), date, content, updatedAt: new Date().toISOString() }
+      set((s) => ({ journal: { entries: [...s.journal.entries, item] } }))
+    }
+    get().save()
+  },
+  deleteJournalEntry: (id) => {
+    set((s) => ({ journal: { entries: s.journal.entries.filter((e) => e.id !== id) } }))
+    get().save()
+  },
+
+  // ── RESTORE FROM BACKUP ──
+  restoreFromBackup: (data) => {
+    const merged = mergeWithDefaults(defaultData, data)
+    set({ ...merged, loaded: true })
+    applyTheme(merged.settings)
     get().save()
   },
 

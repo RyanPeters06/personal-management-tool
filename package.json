@@ -4,7 +4,7 @@
   "description": "Personal life manager desktop app",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "concurrently --kill-others \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build && electron-builder",
     "preview": "vite preview"
   },
@@ -15,6 +15,7 @@
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
+    "react-markdown": "^10.1.0",
     "zustand": "^4.5.5"
   },
   "devDependencies": {
