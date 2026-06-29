@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'PixelGame';
+  src: url('./assets/fonts/PixelGame.otf') format('opentype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+.font-pixel {
+  font-family: 'PixelGame', system-ui, sans-serif;
+}
+
 :root {
   --accent-50: #f0f9ff;
   --accent-100: #e0f2fe;
