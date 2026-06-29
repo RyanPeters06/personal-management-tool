@@ -120,7 +120,7 @@ export default function AIImport() {
         system: SYSTEM_PROMPT,
         messages: [{ role: 'user', content: text }],
       })
-      const raw = message.content[0].text.trim()
+      const raw = message.content[0].text.trim().replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
       const result = JSON.parse(raw)
       setParsed(result)
     } catch (e) {
