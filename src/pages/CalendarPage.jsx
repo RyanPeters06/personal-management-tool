@@ -84,8 +84,15 @@ function EventForm({ initial, onSave, onCancel }) {
   )
 }
 
+const TYPE_DOT = {
+  event: 'var(--accent-500)',
+  deadline: '#ef4444',
+  goal: '#8b5cf6',
+  task: '#f59e0b',
+}
+
 export default function CalendarPage() {
-  const { calendar, addEvent, updateEvent, deleteEvent } = useStore()
+  const { calendar, deadlines, goals, tasks, addEvent, updateEvent, deleteEvent } = useStore()
   const [viewMode, setViewMode] = useState('grid')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [showAdd, setShowAdd] = useState(false)
@@ -99,22 +106,28 @@ export default function CalendarPage() {
   const calEnd = endOfWeek(monthEnd)
   const days = eachDayOfInterval({ start: calStart, end: calEnd })
 
-  const eventsByDate = useMemo(() => {
+  // Aggregate all date-bearing items into a unified map
+  const allItemsByDate = useMemo(() => {
     const map = {}
-    calendar.events.forEach((e) => {
-      const key = e.date
-      if (!map[key]) map[key] = []
-      map[key].push(e)
-    })
+    const push = (date, item) => {
+      if (!date) return
+      if (!map[date]) map[date] = []
+      map[date].push(item)
+    }
+    calendar.events.forEach((e) => push(e.date, { ...e, _type: 'event', _label: e.title }))
+    deadlines?.forEach((d) => !d.done && push(d.endDate, { ...d, _type: 'deadline', _label: d.title }))
+    goals?.forEach((g) => g.targetDate && g.status !== 'done' && push(g.targetDate, { ...g, _type: 'goal', _label: g.title }))
+    tasks?.forEach((t) => t.dueDate && !t.done && push(t.dueDate, { ...t, _type: 'task', _label: t.title }))
     return map
-  }, [calendar.events])
+  }, [calendar.events, deadlines, goals, tasks])
 
   const sortedEvents = useMemo(
     () => [...calendar.events].sort((a, b) => a.date.localeCompare(b.date) || (a.time || '').localeCompare(b.time || '')),
     [calendar.events]
   )
 
-  const dayEvents = selectedDay ? (eventsByDate[format(selectedDay, 'yyyy-MM-dd')] || []) : []
+  const dayItems = selectedDay ? (allItemsByDate[format(selectedDay, 'yyyy-MM-dd')] || []) : []
+  const dayEvents = dayItems.filter((i) => i._type === 'event')
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
@@ -170,7 +183,7 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {days.map((day) => {
               const key = format(day, 'yyyy-MM-dd')
-              const events = eventsByDate[key] || []
+              const items = allItemsByDate[key] || []
               const inMonth = isSameMonth(day, currentDate)
               const today = isToday(day)
               const selected = selectedDay && isSameDay(day, selectedDay)
@@ -190,19 +203,35 @@ export default function CalendarPage() {
                     {format(day, 'd')}
                   </div>
                   <div className="space-y-0.5">
-                    {events.slice(0, 2).map((e) => (
-                      <div key={e.id} className={`text-xs px-1 py-0.5 rounded truncate ${CATEGORY_COLORS[e.category] || CATEGORY_COLORS.other}`}>
-                        {e.title}
+                    {items.slice(0, 2).map((item, i) => (
+                      <div
+                        key={i}
+                        className="text-xs px-1 py-0.5 rounded truncate text-white"
+                        style={{ backgroundColor: TYPE_DOT[item._type] }}
+                      >
+                        {item._label}
                       </div>
                     ))}
-                    {events.length > 2 && (
-                      <div className="text-xs text-slate-400 px-1">+{events.length - 2} more</div>
+                    {items.length > 2 && (
+                      <div className="text-xs text-slate-400 px-1">+{items.length - 2} more</div>
                     )}
                   </div>
                 </div>
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Legend */}
+      {viewMode === 'grid' && (
+        <div className="flex gap-4 mt-3 flex-wrap">
+          {[['event', 'Events'], ['deadline', 'Deadlines'], ['goal', 'Goal Targets'], ['task', 'Tasks']].map(([type, label]) => (
+            <div key={type} className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: TYPE_DOT[type] }} />
+              <span className="text-xs text-slate-400">{label}</span>
+            </div>
+          ))}
         </div>
       )}
 
@@ -215,21 +244,24 @@ export default function CalendarPage() {
               <Plus size={12} /> Add
             </Button>
           </div>
-          {dayEvents.length === 0 ? (
-            <p className="text-sm text-slate-400 italic">No events</p>
+          {dayItems.length === 0 ? (
+            <p className="text-sm text-slate-400 italic">Nothing scheduled</p>
           ) : (
             <div className="space-y-2">
-              {dayEvents.map((e) => (
-                <div key={e.id} className="flex items-start gap-3 group">
-                  <span className="text-xs text-slate-400 w-16 shrink-0 pt-0.5">{e.time || 'All day'}</span>
+              {dayItems.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 group">
+                  <div className="w-2 h-2 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: TYPE_DOT[item._type] }} />
                   <div className="flex-1">
-                    <p className="text-sm text-slate-700 dark:text-slate-200">{e.title}</p>
-                    {e.notes && <p className="text-xs text-slate-400 mt-0.5">{e.notes}</p>}
+                    <p className="text-sm text-slate-700 dark:text-slate-200">{item._label}</p>
+                    <p className="text-xs text-slate-400 capitalize">{item._type}{item.time ? ` · ${item.time}` : ''}</p>
+                    {item.notes && <p className="text-xs text-slate-400 mt-0.5">{item.notes}</p>}
                   </div>
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditEvent(e)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12} /></button>
-                    <button onClick={() => deleteEvent(e.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12} /></button>
-                  </div>
+                  {item._type === 'event' && (
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => setEditEvent(item)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12} /></button>
+                      <button onClick={() => deleteEvent(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12} /></button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -10,15 +10,22 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
+  ShoppingCart,
+  Lightbulb,
+  ListTodo,
+  Dumbbell,
 } from 'lucide-react'
 
 const NAV = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'todos', label: 'To-Do Lists', icon: CheckSquare },
+  { id: 'tasks', label: 'Tasks', icon: ListTodo },
   { id: 'finance', label: 'Finance', icon: DollarSign },
   { id: 'calendar', label: 'Calendar', icon: Calendar },
   { id: 'goals', label: 'Goals & Projects', icon: Target },
   { id: 'tracking', label: 'Tracking', icon: Clock },
+  { id: 'workouts', label: 'Workouts', icon: Dumbbell },
+  { id: 'want-list', label: 'Want List', icon: ShoppingCart },
+  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
   { id: 'ai-import', label: 'AI Import', icon: Sparkles },
 ]
 

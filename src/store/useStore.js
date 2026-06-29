@@ -59,11 +59,19 @@ const defaultData = {
     games: [],
     shows: [],
   },
+  tasks: [],
+  wantList: [],
+  ideas: [],
+  workouts: {
+    sessions: [],
+    logs: [],
+  },
   settings: {
     darkMode: false,
     accent: 'slate',
     sidebarCollapsed: false,
     claudeApiKey: import.meta.env.VITE_CLAUDE_API_KEY || '',
+    customTags: [],
   },
 }
 
@@ -584,6 +592,111 @@ const useStore = create((set, get) => ({
         shows: s.watchlist.shows.filter((sh) => sh.id !== id),
       },
     }))
+    get().save()
+  },
+
+  // ── TASKS (standalone) ──
+  addTask2: (task) => {
+    const item = { id: generateId(), title: task.title, notes: task.notes || '', dueDate: task.dueDate || null, priority: task.priority || 'none', tags: task.tags || [], done: false, createdAt: new Date().toISOString() }
+    set((s) => ({ tasks: [...s.tasks, item] }))
+    get().save()
+  },
+  updateTask2: (id, patch) => {
+    set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...patch } : t)) }))
+    get().save()
+  },
+  deleteTask2: (id) => {
+    set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }))
+    get().save()
+  },
+
+  // ── WANT LIST ──
+  addWantItem: (item) => {
+    const newItem = { id: generateId(), title: item.title, notes: item.notes || '', options: item.options || [], priority: item.priority || 'medium', tags: item.tags || [], purchased: false, createdAt: new Date().toISOString() }
+    set((s) => ({ wantList: [...s.wantList, newItem] }))
+    get().save()
+  },
+  updateWantItem: (id, patch) => {
+    set((s) => ({ wantList: s.wantList.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+    get().save()
+  },
+  deleteWantItem: (id) => {
+    set((s) => ({ wantList: s.wantList.filter((i) => i.id !== id) }))
+    get().save()
+  },
+
+  // ── IDEAS ──
+  addIdea: (idea) => {
+    const item = { id: generateId(), title: idea.title, description: idea.description || '', category: idea.category || 'other', status: idea.status || 'raw', tags: idea.tags || [], createdAt: new Date().toISOString() }
+    set((s) => ({ ideas: [...s.ideas, item] }))
+    get().save()
+  },
+  updateIdea: (id, patch) => {
+    set((s) => ({ ideas: s.ideas.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+    get().save()
+  },
+  deleteIdea: (id) => {
+    set((s) => ({ ideas: s.ideas.filter((i) => i.id !== id) }))
+    get().save()
+  },
+
+  // ── CUSTOM TAGS ──
+  addCustomTag: (tag) => {
+    set((s) => {
+      if (s.settings.customTags.includes(tag)) return s
+      const settings = { ...s.settings, customTags: [...s.settings.customTags, tag] }
+      return { settings }
+    })
+    get().save()
+  },
+  removeCustomTag: (tag) => {
+    set((s) => {
+      const settings = { ...s.settings, customTags: s.settings.customTags.filter((t) => t !== tag) }
+      return { settings }
+    })
+    get().save()
+  },
+
+  // ── WORKOUTS ──
+  addSession: (session) => {
+    const item = { id: generateId(), name: session.name, trackWeekly: session.trackWeekly || false, exercises: [] }
+    set((s) => ({ workouts: { ...s.workouts, sessions: [...s.workouts.sessions, item] } }))
+    get().save()
+  },
+  updateSession: (id, patch) => {
+    set((s) => ({ workouts: { ...s.workouts, sessions: s.workouts.sessions.map((ses) => ses.id === id ? { ...ses, ...patch } : ses) } }))
+    get().save()
+  },
+  deleteSession: (id) => {
+    set((s) => ({ workouts: { ...s.workouts, sessions: s.workouts.sessions.filter((ses) => ses.id !== id), logs: s.workouts.logs.filter((l) => l.sessionId !== id) } }))
+    get().save()
+  },
+  addExercise: (sessionId, exercise) => {
+    const ex = { id: generateId(), name: exercise.name, sets: exercise.sets || '', reps: exercise.reps || '', notes: exercise.notes || '' }
+    set((s) => ({ workouts: { ...s.workouts, sessions: s.workouts.sessions.map((ses) => ses.id === sessionId ? { ...ses, exercises: [...ses.exercises, ex] } : ses) } }))
+    get().save()
+  },
+  updateExercise: (sessionId, exerciseId, patch) => {
+    set((s) => ({ workouts: { ...s.workouts, sessions: s.workouts.sessions.map((ses) => ses.id === sessionId ? { ...ses, exercises: ses.exercises.map((ex) => ex.id === exerciseId ? { ...ex, ...patch } : ex) } : ses) } }))
+    get().save()
+  },
+  deleteExercise: (sessionId, exerciseId) => {
+    set((s) => ({ workouts: { ...s.workouts, sessions: s.workouts.sessions.map((ses) => ses.id === sessionId ? { ...ses, exercises: ses.exercises.filter((ex) => ex.id !== exerciseId) } : ses) } }))
+    get().save()
+  },
+  addLog: (log) => {
+    const item = { id: generateId(), date: log.date, sessionId: log.sessionId, sessionName: log.sessionName, completedExercises: log.completedExercises || [] }
+    set((s) => ({ workouts: { ...s.workouts, logs: [...s.workouts.logs, item] } }))
+    get().save()
+  },
+  deleteLog: (id) => {
+    set((s) => ({ workouts: { ...s.workouts, logs: s.workouts.logs.filter((l) => l.id !== id) } }))
+    get().save()
+  },
+
+  // ── WIPE ALL DATA ──
+  wipeAllData: () => {
+    set({ ...defaultData, settings: { ...get().settings }, loaded: true })
     get().save()
   },
 }))

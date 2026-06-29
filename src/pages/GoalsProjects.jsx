@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import useStore from '../store/useStore'
+import { playCompleteSound } from '../utils/completeSound'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
+import TagSelect from '../components/shared/TagSelect'
 import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 
@@ -78,7 +80,6 @@ function GoalForm({ initial, onSave, onCancel }) {
 }
 
 function ProjectForm({ initial, goals, onSave, onCancel }) {
-  const TAGS = ['', 'Side Hustle', 'Work', 'Personal', 'Health', 'Finance']
   const [form, setForm] = useState(initial || { title: '', description: '', goalId: '', tag: '', status: 'active' })
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -106,13 +107,7 @@ function ProjectForm({ initial, goals, onSave, onCancel }) {
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Tag</label>
-          <select
-            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
-            value={form.tag}
-            onChange={(e) => set('tag', e.target.value)}
-          >
-            {TAGS.map((t) => <option key={t} value={t}>{t || 'No tag'}</option>)}
-          </select>
+          <TagSelect value={form.tag} onChange={(v) => set('tag', v)} />
         </div>
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Link to Goal</label>
@@ -153,6 +148,16 @@ function ProjectCard({ project, goals }) {
   const [subtaskInput, setSubtaskInput] = useState('')
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesDraft, setNotesDraft] = useState(project.notes || '')
+  const [poppingSubtasks, setPoppingSubtasks] = useState(new Set())
+
+  const handleToggleSubtask = useCallback((projId, stId, isDone) => {
+    if (!isDone) {
+      playCompleteSound()
+      setPoppingSubtasks((s) => new Set(s).add(stId))
+      setTimeout(() => setPoppingSubtasks((s) => { const n = new Set(s); n.delete(stId); return n }), 400)
+    }
+    toggleSubtask(projId, stId)
+  }, [toggleSubtask])
 
   const done = project.subtasks.filter((s) => s.done).length
   const total = project.subtasks.length
@@ -208,13 +213,13 @@ function ProjectCard({ project, goals }) {
               {project.subtasks.map((st) => (
                 <div key={st.id} className={`flex items-center gap-2 group ${st.done ? 'task-done' : ''}`}>
                   <button
-                    onClick={() => toggleSubtask(project.id, st.id)}
+                    onClick={() => handleToggleSubtask(project.id, st.id, st.done)}
                     className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                       st.done ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-500'
                     }`}
                     style={st.done ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
                   >
-                    {st.done && <Check size={9} />}
+                    {st.done && <Check size={9} className={poppingSubtasks.has(st.id) ? 'task-check-pop' : ''} />}
                   </button>
                   <span className={`text-sm flex-1 ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{st.title}</span>
                   <button

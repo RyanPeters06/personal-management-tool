@@ -83,6 +83,36 @@ body {
   transition: opacity 0.3s ease;
 }
 
+/* Task completion animations */
+@keyframes check-pop {
+  0%   { transform: scale(0) rotate(-10deg); opacity: 0; }
+  50%  { transform: scale(1.4) rotate(5deg); opacity: 1; }
+  75%  { transform: scale(0.9) rotate(-2deg); }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+@keyframes row-flash {
+  0%   { background-color: transparent; }
+  25%  { background-color: color-mix(in srgb, var(--accent-500) 12%, transparent); }
+  100% { background-color: transparent; }
+}
+
+@keyframes row-exit {
+  0%   { opacity: 1; max-height: 120px; transform: translateX(0); }
+  30%  { opacity: 1; transform: translateX(4px); }
+  100% { opacity: 0; max-height: 0; transform: translateX(8px); padding-top: 0; padding-bottom: 0; margin: 0; }
+}
+
+.task-check-pop {
+  animation: check-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.task-row-completing {
+  animation: row-flash 0.3s ease-out, row-exit 0.5s ease-in 0.25s forwards;
+  overflow: hidden;
+  pointer-events: none;
+}
+
 /* Drag handle */
 .drag-region {
   -webkit-app-region: drag;
