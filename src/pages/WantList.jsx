@@ -160,9 +160,9 @@ function WantItemCard({ item, customTagColors, onEdit, onDelete, onMarkBought, o
           {!item.purchased ? (
             <button
               onClick={onMarkBought}
-              className="text-xs px-2.5 py-1 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800 hover:bg-green-100 transition-colors font-medium flex items-center gap-1"
+              className="text-xs px-2.5 py-1 rounded-lg bg-slate-50 dark:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-600 transition-colors font-medium"
             >
-              <Check size={10} /> Bought
+              Mark Bought
             </button>
           ) : (
             <button
