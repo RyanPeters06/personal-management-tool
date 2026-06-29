@@ -471,6 +471,9 @@ Format it clearly with sections and bullet points. Be concise.`)}
   )
 }
 
+// ─── Session-persistent draft state (survives navigation, resets on app close) ─
+const sessionDraft = { mode: 'chat', text: '' }
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function AIImport() {
@@ -481,8 +484,10 @@ export default function AIImport() {
     deleteTask2, deleteEvent, deleteGoal, deleteProject, deleteDeadline, deleteIdea,
     deleteWantItem, deleteSubscription, deleteSession, deleteGame, deleteShow, deleteOwed, deleteIncoming } = store
 
-  const [mode, setMode] = useState('chat') // 'chat' | 'import'
-  const [text, setText] = useState('')
+  const [mode, setMode] = useState(sessionDraft.mode)
+  const [text, setText] = useState(sessionDraft.text)
+  const persistMode = (m) => { sessionDraft.mode = m; setMode(m) }
+  const persistText = (t) => { sessionDraft.text = t; setText(t) }
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [phase, setPhase] = useState('input') // input | clarify | preview | done
@@ -499,7 +504,7 @@ export default function AIImport() {
   const loadFile = async () => {
     if (window.electronAPI?.openFile) {
       const content = await window.electronAPI.openFile()
-      if (content) setText(content)
+      if (content) persistText(content)
     } else {
       const input = document.createElement('input')
       input.type = 'file'
@@ -508,7 +513,7 @@ export default function AIImport() {
         const file = e.target.files[0]
         if (!file) return
         const reader = new FileReader()
-        reader.onload = (ev) => setText(ev.target.result)
+        reader.onload = (ev) => persistText(ev.target.result)
         reader.readAsText(file)
       }
       input.click()
@@ -709,7 +714,7 @@ export default function AIImport() {
   }
 
   const reset = () => {
-    setText('')
+    persistText('')
     setParsed(null)
     setError('')
     setAnswers({})
@@ -748,14 +753,14 @@ export default function AIImport() {
       {/* Mode toggle */}
       <div className="flex rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden text-sm mb-6 w-fit">
         <button
-          onClick={() => setMode('chat')}
+          onClick={() => persistMode('chat')}
           className={`flex items-center gap-2 px-4 py-2 transition-colors ${mode === 'chat' ? 'text-white font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           style={mode === 'chat' ? { backgroundColor: 'var(--accent-500)' } : {}}
         >
           <MessageSquare size={14} /> Chat
         </button>
         <button
-          onClick={() => { setMode('import'); reset() }}
+          onClick={() => { persistMode('import'); reset() }}
           className={`flex items-center gap-2 px-4 py-2 transition-colors ${mode === 'import' ? 'text-white font-medium' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
           style={mode === 'import' ? { backgroundColor: 'var(--accent-500)' } : {}}
         >
@@ -787,7 +792,7 @@ export default function AIImport() {
                   className="w-full h-56 text-sm bg-slate-50 dark:bg-slate-700/50 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-800 dark:text-slate-100 outline-none resize-none placeholder-slate-400 focus:border-slate-400"
                   placeholder={`Paste anything here — a to-do list, notes, a brain dump...\n\nExamples:\n• "Buy new headphones by Friday"\n• "John owes me $40 for dinner"\n• "Watch Oppenheimer on Netflix"\n• "Goal: Launch my YouTube channel by December"`}
                   value={text}
-                  onChange={(e) => setText(e.target.value)}
+                  onChange={(e) => persistText(e.target.value)}
                 />
               </div>
 
