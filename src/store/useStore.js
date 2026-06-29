@@ -665,7 +665,7 @@ const useStore = create((set, get) => ({
 
   // ── WANT LIST ──
   addWantItem: (item) => {
-    const newItem = { id: generateId(), title: item.title, notes: item.notes || '', options: item.options || [], priority: item.priority || 'medium', tags: item.tags || [], purchased: false, createdAt: new Date().toISOString() }
+    const newItem = { id: generateId(), title: item.title, notes: item.notes || '', options: item.options || [], priority: item.priority || 'medium', tags: item.tags || [], timeframe: item.timeframe || 'soon', purchased: false, createdAt: new Date().toISOString() }
     set((s) => ({ wantList: [...s.wantList, newItem] }))
     get().save()
   },
