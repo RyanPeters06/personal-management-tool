@@ -127,7 +127,7 @@ function WantItemCard({ item, onEdit, onDelete, onMarkBought }) {
           {item.tags?.length > 0 && (
             <div className="flex gap-1 mt-2 flex-wrap">
               {item.tags.map((t) => (
-                <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t)}`}>{t}</span>
+                <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t, customTagColors)}`}>{t}</span>
               ))}
             </div>
           )}
@@ -181,7 +181,8 @@ function WantItemCard({ item, onEdit, onDelete, onMarkBought }) {
 }
 
 export default function WantList() {
-  const { wantList, addWantItem, updateWantItem, deleteWantItem } = useStore()
+  const { wantList, addWantItem, updateWantItem, deleteWantItem, settings } = useStore()
+  const customTagColors = settings.customTagColors || {}
   const [filter, setFilter] = useState('all')
   const [showAdd, setShowAdd] = useState(false)
   const [editItem, setEditItem] = useState(null)

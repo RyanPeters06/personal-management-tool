@@ -76,6 +76,7 @@ const defaultData = {
     sidebarCollapsed: false,
     claudeApiKey: import.meta.env.VITE_CLAUDE_API_KEY || '',
     customTags: [],
+    customTagColors: {},
   },
 }
 
@@ -693,18 +694,19 @@ const useStore = create((set, get) => ({
   },
 
   // ── CUSTOM TAGS ──
-  addCustomTag: (tag) => {
+  addCustomTag: (tag, colorKey) => {
     set((s) => {
       if (s.settings.customTags.includes(tag)) return s
-      const settings = { ...s.settings, customTags: [...s.settings.customTags, tag] }
-      return { settings }
+      const colors = colorKey ? { ...s.settings.customTagColors, [tag]: colorKey } : s.settings.customTagColors
+      return { settings: { ...s.settings, customTags: [...s.settings.customTags, tag], customTagColors: colors } }
     })
     get().save()
   },
   removeCustomTag: (tag) => {
     set((s) => {
-      const settings = { ...s.settings, customTags: s.settings.customTags.filter((t) => t !== tag) }
-      return { settings }
+      const colors = { ...s.settings.customTagColors }
+      delete colors[tag]
+      return { settings: { ...s.settings, customTags: s.settings.customTags.filter((t) => t !== tag), customTagColors: colors } }
     })
     get().save()
   },

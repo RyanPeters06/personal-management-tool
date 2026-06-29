@@ -920,10 +920,10 @@ export default function AIImport() {
                 {d.projects?.map((p, i) => <PreviewItem key={i} text={p.title} sub={[p.tag, p.subtasks?.length ? `${p.subtasks.length} subtasks` : null].filter(Boolean).join(' · ')} />)}
               </SectionPreview>
               <SectionPreview title="Deadlines" count={d.deadlines?.length || 0}>
-                {d.deadlines?.map((dl, i) => <PreviewItem key={i} text={dl.title} sub={[dl.category, dl.endDate].filter(Boolean).join(' · ')} />)}
+                {d.deadlines?.map((dl, i) => <PreviewItem key={i} text={dl.title} sub={[dl.category ? dl.category.charAt(0).toUpperCase() + dl.category.slice(1) : null, dl.endDate].filter(Boolean).join(' · ')} />)}
               </SectionPreview>
               <SectionPreview title="Ideas (New)" count={d.ideas?.length || 0}>
-                {d.ideas?.map((idea, i) => <PreviewItem key={i} text={idea.title} sub={[idea.category, idea.status].filter(Boolean).join(' · ')} />)}
+                {d.ideas?.map((idea, i) => <PreviewItem key={i} text={idea.title} sub={[idea.category ? idea.category.charAt(0).toUpperCase() + idea.category.slice(1) : null, idea.status ? idea.status.charAt(0).toUpperCase() + idea.status.slice(1) : null].filter(Boolean).join(' · ')} />)}
               </SectionPreview>
               {ideaUpdates.length > 0 && (
                 <SectionPreview title="Ideas (Updates to Existing)" count={ideaUpdates.length}>

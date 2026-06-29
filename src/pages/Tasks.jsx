@@ -74,7 +74,8 @@ function TaskForm({ initial, onSave, onCancel }) {
 }
 
 export default function Tasks({ onNavigate }) {
-  const { tasks, addTask2, updateTask2, deleteTask2, projects, toggleSubtask } = useStore()
+  const { tasks, addTask2, updateTask2, deleteTask2, projects, toggleSubtask, settings } = useStore()
+  const customTagColors = settings.customTagColors || {}
   const [filter, setFilter] = useState('active')
   const [showAdd, setShowAdd] = useState(false)
   const [editTask, setEditTask] = useState(null)
@@ -192,7 +193,7 @@ export default function Tasks({ onNavigate }) {
                         </span>
                       )}
                       {task.tags?.map((t) => (
-                        <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t)}`}>{t}</span>
+                        <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t, customTagColors)}`}>{t}</span>
                       ))}
                     </div>
                   </div>
