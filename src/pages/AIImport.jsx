@@ -102,7 +102,7 @@ function buildContextSummary(state) {
   if (pendingWants.length > 0) {
     lines.push('\n## Want List')
     pendingWants.forEach((item) => {
-      let s = `- ${item.title} [${item.priority} priority]`
+      let s = `- ${item.title} [${item.timeframe || 'soon'}]`
       if (item.notes) s += ` — ${item.notes}`
       lines.push(s)
     })
@@ -187,10 +187,10 @@ Return ONLY a valid JSON object. Only include keys that have items to add:
       { "title": "string", "endDate": "YYYY-MM-DD", "notes": "string or empty", "category": "sale|offer|event|other" }
     ],
     "ideas": [
-      { "title": "string", "description": "string or empty", "category": "startup|build|creative|other", "status": "raw" }
+      { "title": "string", "description": "string or empty", "status": "raw" }
     ],
     "wantList": [
-      { "title": "string", "notes": "string or empty", "options": [{ "label": "string", "url": "string", "price": "string" }], "priority": "high|medium|low" }
+      { "title": "string", "notes": "string or empty", "timeframe": "soon|eventually", "options": [{ "label": "string", "url": "string", "price": "string" }] }
     ],
     "subscriptions": [
       { "name": "string", "cost": "number", "cycle": "monthly|annual", "renewDate": "YYYY-MM-DD or empty", "category": "streaming|tools|utilities|health|other", "active": true }
@@ -228,7 +228,7 @@ Rules:
 - Events with a specific date go in "calendar". Time-sensitive sales/offers go in "deadlines".
 - Long-term ambitions go in "goals". Active work with steps goes in "projects".
 - Brain dump / startup / build ideas go in "ideas". The "description" field of an idea can be long — use it for full notes, bullet lists, or multi-line content.
-- Things the user wants to buy go in "wantList".
+- Things the user wants to buy go in "wantList". Use timeframe "soon" if they want it soon/now, "eventually" if it's down the line or not urgent.
 - Recurring paid services (Netflix, Spotify, SaaS tools, gym memberships, etc.) go in "subscriptions".
 - Workout routines, exercise plans, or gym sessions go in "workouts". Group exercises under a named session (e.g. "Leg Day", "Push Day").
 - Games and shows/movies/TV go in "watchlist".
@@ -615,9 +615,9 @@ export default function AIImport() {
   const addToCategory = (data, cat, item) => {
     if (cat === 'tasks') { if (!data.tasks) data.tasks = []; data.tasks.push({ title: item.title, notes: item.description, priority: 'none' }) }
     else if (cat === 'goals') { if (!data.goals) data.goals = []; data.goals.push({ title: item.title, description: item.description }) }
-    else if (cat === 'ideas') { if (!data.ideas) data.ideas = []; data.ideas.push({ title: item.title, description: item.description, category: 'other', status: 'raw' }) }
+    else if (cat === 'ideas') { if (!data.ideas) data.ideas = []; data.ideas.push({ title: item.title, description: item.description, status: 'raw' }) }
     else if (cat === 'projects') { if (!data.projects) data.projects = []; data.projects.push({ title: item.title, description: item.description }) }
-    else if (cat === 'wantList') { if (!data.wantList) data.wantList = []; data.wantList.push({ title: item.title, notes: item.description, priority: 'medium', options: [] }) }
+    else if (cat === 'wantList') { if (!data.wantList) data.wantList = []; data.wantList.push({ title: item.title, notes: item.description, timeframe: 'soon', options: [] }) }
     else if (cat === 'workouts') { if (!data.workouts) data.workouts = []; data.workouts.push({ name: item.title, exercises: [] }) }
     else if (cat === 'subscriptions') { if (!data.subscriptions) data.subscriptions = []; data.subscriptions.push({ name: item.title, cost: 0, cycle: 'monthly', category: 'other', active: true }) }
   }
@@ -928,7 +928,7 @@ export default function AIImport() {
                 {d.deadlines?.map((dl, i) => <PreviewItem key={i} text={dl.title} sub={[dl.category ? dl.category.charAt(0).toUpperCase() + dl.category.slice(1) : null, dl.endDate].filter(Boolean).join(' · ')} />)}
               </SectionPreview>
               <SectionPreview title="Ideas (New)" count={d.ideas?.length || 0}>
-                {d.ideas?.map((idea, i) => <PreviewItem key={i} text={idea.title} sub={[idea.category ? idea.category.charAt(0).toUpperCase() + idea.category.slice(1) : null, idea.status ? idea.status.charAt(0).toUpperCase() + idea.status.slice(1) : null].filter(Boolean).join(' · ')} />)}
+                {d.ideas?.map((idea, i) => <PreviewItem key={i} text={idea.title} sub={idea.description ? idea.description.slice(0, 80) + (idea.description.length > 80 ? '…' : '') : null} />)}
               </SectionPreview>
               {ideaUpdates.length > 0 && (
                 <SectionPreview title="Ideas (Updates to Existing)" count={ideaUpdates.length}>
@@ -944,7 +944,7 @@ export default function AIImport() {
                 </SectionPreview>
               )}
               <SectionPreview title="Want List" count={d.wantList?.length || 0}>
-                {d.wantList?.map((item, i) => <PreviewItem key={i} text={item.title} sub={item.priority} />)}
+                {d.wantList?.map((item, i) => <PreviewItem key={i} text={item.title} sub={[item.timeframe, item.notes].filter(Boolean).join(' · ')} />)}
               </SectionPreview>
 
               {parsed.removals?.length > 0 && (
