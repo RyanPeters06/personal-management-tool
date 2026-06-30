@@ -502,6 +502,17 @@ const useStore = create((set, get) => ({
     get().save()
   },
 
+  toggleSubtaskToday: (projectId, subtaskId) => {
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, subtasks: p.subtasks.map((st) => st.id === subtaskId ? { ...st, today: !st.today } : st) }
+          : p
+      ),
+    }))
+    get().save()
+  },
+
   deleteSubtask: (projectId, subtaskId) => {
     set((s) => ({
       projects: s.projects.map((p) =>
@@ -708,6 +719,10 @@ const useStore = create((set, get) => ({
       delete colors[tag]
       return { settings: { ...s.settings, customTags: s.settings.customTags.filter((t) => t !== tag), customTagColors: colors } }
     })
+    get().save()
+  },
+  setCustomTagColor: (tag, colorKey) => {
+    set((s) => ({ settings: { ...s.settings, customTagColors: { ...s.settings.customTagColors, [tag]: colorKey } } }))
     get().save()
   },
 

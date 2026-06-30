@@ -3,6 +3,7 @@ import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
+import { tagColor, COLOR_OPTIONS } from '../components/shared/TagSelect'
 import { Moon, Sun, Eye, EyeOff, Trash2, X, Plus, Download, AlertTriangle } from 'lucide-react'
 
 const ACCENTS = [
@@ -13,10 +14,20 @@ const ACCENTS = [
 ]
 
 export default function Settings() {
-  const { settings, updateSettings, addCustomTag, removeCustomTag, wipeAllData, wipeSectionData, restoreFromBackup } = useStore()
+  const { settings, updateSettings, addCustomTag, removeCustomTag, setCustomTagColor, wipeAllData, wipeSectionData, restoreFromBackup } = useStore()
   const [showKey, setShowKey] = useState(false)
   const [keyDraft, setKeyDraft] = useState(settings.claudeApiKey || '')
   const [newTag, setNewTag] = useState('')
+  const [newTagColor, setNewTagColor] = useState('slate')
+  const [editingColorTag, setEditingColorTag] = useState(null)
+  const customTagColors = settings.customTagColors || {}
+  const submitNewTag = () => {
+    const t = newTag.trim()
+    if (!t) return
+    addCustomTag(t, newTagColor)
+    setNewTag('')
+    setNewTagColor('slate')
+  }
   const [confirmWipe, setConfirmWipe] = useState(false)
   const [confirmSection, setConfirmSection] = useState(null) // { key, label }
   const [restoreError, setRestoreError] = useState('')
@@ -103,31 +114,56 @@ export default function Settings() {
             <p className="text-xs text-slate-400 italic">No custom tags yet.</p>
           )}
           {(settings.customTags || []).map((tag) => (
-            <span key={tag} className="flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-              {tag}
-              <button onClick={() => removeCustomTag(tag)} className="ml-0.5 text-slate-400 hover:text-red-500"><X size={11} /></button>
-            </span>
+            <div key={tag} className="relative">
+              <span className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${tagColor(tag, customTagColors)}`}>
+                <button
+                  onClick={() => setEditingColorTag(editingColorTag === tag ? null : tag)}
+                  className="hover:opacity-70"
+                  title="Change color"
+                >
+                  {tag}
+                </button>
+                <button onClick={() => removeCustomTag(tag)} className="ml-0.5 opacity-60 hover:opacity-100"><X size={11} /></button>
+              </span>
+              {editingColorTag === tag && (
+                <div className="absolute z-10 mt-1 left-0 flex items-center gap-1 flex-wrap p-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-lg shadow-lg w-36">
+                  {COLOR_OPTIONS.map((c) => (
+                    <button
+                      key={c.key}
+                      onClick={() => { setCustomTagColor(tag, c.key); setEditingColorTag(null) }}
+                      className={`w-5 h-5 rounded-full transition-all ${customTagColors[tag] === c.key ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'hover:scale-110'}`}
+                      style={{ backgroundColor: c.dot }}
+                      title={c.key}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input
             className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
             placeholder="New tag name"
             value={newTag}
             onChange={(e) => setNewTag(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                const t = newTag.trim()
-                if (t) { addCustomTag(t); setNewTag('') }
-              }
-            }}
+            onKeyDown={(e) => { if (e.key === 'Enter') submitNewTag() }}
           />
-          <Button
-            onClick={() => { const t = newTag.trim(); if (t) { addCustomTag(t); setNewTag('') } }}
-            disabled={!newTag.trim()}
-          >
+          <Button onClick={submitNewTag} disabled={!newTag.trim()}>
             <Plus size={14} /> Add
           </Button>
+        </div>
+        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+          <span className="text-xs text-slate-400 mr-1">Color:</span>
+          {COLOR_OPTIONS.map((c) => (
+            <button
+              key={c.key}
+              onClick={() => setNewTagColor(c.key)}
+              className={`w-5 h-5 rounded-full transition-all ${newTagColor === c.key ? 'ring-2 ring-offset-1 ring-slate-400 scale-110' : 'hover:scale-110'}`}
+              style={{ backgroundColor: c.dot }}
+              title={c.key}
+            />
+          ))}
         </div>
       </div>
 

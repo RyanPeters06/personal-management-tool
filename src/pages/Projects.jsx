@@ -5,11 +5,10 @@ import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
-import TagSelect from '../components/shared/TagSelect'
+import TagSelect, { tagColor } from '../components/shared/TagSelect'
 import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight } from 'lucide-react'
 
 const STATUS_COLORS = { active: 'green', paused: 'yellow', done: 'slate' }
-const TAG_COLORS = { 'Side Hustle': 'purple', Work: 'blue', Personal: 'orange', Health: 'green', Finance: 'yellow' }
 
 function ProjectForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial || { title: '', description: '', tag: '', status: 'active' })
@@ -63,7 +62,8 @@ function ProjectForm({ initial, onSave, onCancel }) {
 }
 
 export function ProjectCard({ project, hideTag }) {
-  const { updateProject, deleteProject, addSubtask, toggleSubtask, deleteSubtask } = useStore()
+  const { updateProject, deleteProject, addSubtask, toggleSubtask, deleteSubtask, settings } = useStore()
+  const customTagColors = settings.customTagColors || {}
   const [expanded, setExpanded] = useState(true)
   const [editing, setEditing] = useState(false)
   const [subtaskInput, setSubtaskInput] = useState('')
@@ -101,7 +101,7 @@ export function ProjectCard({ project, hideTag }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">{project.title}</span>
-            {!hideTag && project.tag && <Badge label={project.tag} color={TAG_COLORS[project.tag] || 'slate'} />}
+            {!hideTag && project.tag && <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${tagColor(project.tag, customTagColors)}`}>{project.tag}</span>}
             <Badge label={project.status} color={STATUS_COLORS[project.status]} />
           </div>
           {total > 0 && (
@@ -198,13 +198,17 @@ export function ProjectCard({ project, hideTag }) {
 }
 
 export default function Projects() {
-  const { projects, addProject } = useStore()
+  const { projects, addProject, settings } = useStore()
   const [showAdd, setShowAdd] = useState(false)
   const [statusFilter, setStatusFilter] = useState('active')
+  const [tagFilter, setTagFilter] = useState('all')
+
+  const usedTags = [...new Set(projects.map((p) => p.tag).filter(Boolean))]
 
   const filtered = projects.filter((p) => {
-    if (statusFilter === 'all') return true
-    return p.status === statusFilter
+    if (statusFilter !== 'all' && p.status !== statusFilter) return false
+    if (tagFilter !== 'all' && p.tag !== tagFilter) return false
+    return true
   })
 
   return (
@@ -219,19 +223,31 @@ export default function Projects() {
         }
       />
 
-      <div className="flex gap-1 mb-5 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 w-fit">
-        {['active', 'paused', 'done', 'all'].map((f) => (
-          <button
-            key={f}
-            onClick={() => setStatusFilter(f)}
-            className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${
-              statusFilter === f ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
-            style={statusFilter === f ? { backgroundColor: 'var(--accent-500)' } : {}}
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <div className="flex gap-1 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 w-fit">
+          {['active', 'paused', 'done', 'all'].map((f) => (
+            <button
+              key={f}
+              onClick={() => setStatusFilter(f)}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${
+                statusFilter === f ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
+              style={statusFilter === f ? { backgroundColor: 'var(--accent-500)' } : {}}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+        {usedTags.length > 0 && (
+          <select
+            value={tagFilter}
+            onChange={(e) => setTagFilter(e.target.value)}
+            className="border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs font-medium bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 outline-none focus:border-slate-400"
           >
-            {f}
-          </button>
-        ))}
+            <option value="all">All tags</option>
+            {usedTags.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        )}
       </div>
 
       {filtered.length === 0 && (
