@@ -5,12 +5,32 @@ const Store = require('electron-store')
 const store = new Store()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
 
+// Unique Windows AppUserModelID so the taskbar treats this as its own app
+// (not lumped in with any other Electron app running under the default id).
+const APP_ID = 'com.peter.lifemanager'
+if (process.platform === 'win32') app.setAppUserModelId(APP_ID)
+
+// Only allow one instance; focus the existing window instead of opening another.
+const gotLock = app.requestSingleInstanceLock()
+if (!gotLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const win = BrowserWindow.getAllWindows()[0]
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
     height: 800,
     minWidth: 900,
     minHeight: 600,
+    title: 'Life Manager',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
