@@ -8,6 +8,10 @@ export default defineConfig({
     outDir: 'dist',
   },
   server: {
-    port: 5173,
+    // Dedicated port for Life Manager so it never collides with another
+    // local Electron/Vite app (e.g. Royal Chatbot on 5173). strictPort makes
+    // startup fail loudly instead of silently drifting to another port.
+    port: 5273,
+    strictPort: true,
   },
 })

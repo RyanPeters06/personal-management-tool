@@ -4,7 +4,7 @@
   "description": "Personal life manager desktop app",
   "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently --kill-others \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev": "concurrently --kill-others \"vite\" \"wait-on http://localhost:5273 && electron .\"",
     "build": "vite build && electron-builder",
     "preview": "vite preview"
   },
