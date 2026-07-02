@@ -6,7 +6,7 @@ import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
 import TagSelect, { tagColor } from '../components/shared/TagSelect'
-import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight, ChevronUp, StickyNote } from 'lucide-react'
 
 const STATUS_COLORS = { active: 'green', paused: 'yellow', done: 'slate' }
 
@@ -62,7 +62,7 @@ function ProjectForm({ initial, onSave, onCancel }) {
 }
 
 export function ProjectCard({ project, hideTag }) {
-  const { updateProject, deleteProject, addSubtask, toggleSubtask, deleteSubtask, moveSubtask, settings } = useStore()
+  const { updateProject, deleteProject, addSubtask, toggleSubtask, deleteSubtask, moveSubtask, updateSubtask, settings } = useStore()
   const customTagColors = settings.customTagColors || {}
   const [expanded, setExpanded] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -70,6 +70,15 @@ export function ProjectCard({ project, hideTag }) {
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesDraft, setNotesDraft] = useState(project.notes || '')
   const [poppingSubtasks, setPoppingSubtasks] = useState(new Set())
+  const [notingSubtask, setNotingSubtask] = useState(null) // subtask id being annotated
+  const [subNoteDraft, setSubNoteDraft] = useState('')
+
+  const startNoting = (st) => { setNotingSubtask(st.id); setSubNoteDraft(st.note || '') }
+  const saveNote = (stId) => {
+    updateSubtask(project.id, stId, { note: subNoteDraft.trim() })
+    setNotingSubtask(null)
+    setSubNoteDraft('')
+  }
 
   const handleToggleSubtask = useCallback((projId, stId, isDone) => {
     if (!isDone) {
@@ -129,42 +138,70 @@ export function ProjectCard({ project, hideTag }) {
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Tasks</p>
             <div className="space-y-1">
               {project.subtasks.map((st, i) => (
-                <div key={st.id} className={`flex items-center gap-2 group ${st.done ? 'task-done' : ''}`}>
-                  <button
-                    onClick={() => handleToggleSubtask(project.id, st.id, st.done)}
-                    className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
-                      st.done ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-500'
-                    }`}
-                    style={st.done ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
-                  >
-                    {st.done && <Check size={9} className={poppingSubtasks.has(st.id) ? 'task-check-pop' : ''} />}
-                  </button>
-                  <span className={`text-sm flex-1 min-w-0 truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{st.title}</span>
-                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div key={st.id} className={`group ${st.done ? 'task-done' : ''}`}>
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => moveSubtask(project.id, st.id, -1)}
-                      disabled={i === 0}
-                      className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
-                      title="Move up"
+                      onClick={() => handleToggleSubtask(project.id, st.id, st.done)}
+                      className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                        st.done ? 'border-transparent text-white' : 'border-slate-300 dark:border-slate-500'
+                      }`}
+                      style={st.done ? { backgroundColor: 'var(--accent-500)', borderColor: 'var(--accent-500)' } : {}}
                     >
-                      <ChevronUp size={13} />
+                      {st.done && <Check size={9} className={poppingSubtasks.has(st.id) ? 'task-check-pop' : ''} />}
                     </button>
-                    <button
-                      onClick={() => moveSubtask(project.id, st.id, 1)}
-                      disabled={i === project.subtasks.length - 1}
-                      className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
-                      title="Move down"
-                    >
-                      <ChevronDown size={13} />
-                    </button>
-                    <button
-                      onClick={() => deleteSubtask(project.id, st.id)}
-                      className="p-0.5 text-slate-400 hover:text-red-500"
-                      title="Delete"
-                    >
-                      <Trash2 size={11} />
-                    </button>
+                    <span className={`text-sm flex-1 min-w-0 truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{st.title}</span>
+                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        onClick={() => startNoting(st)}
+                        className={`p-0.5 hover:text-slate-600 dark:hover:text-slate-200 ${st.note ? 'text-amber-500' : 'text-slate-400'}`}
+                        title={st.note ? 'Edit note' : 'Add note'}
+                      >
+                        <StickyNote size={12} />
+                      </button>
+                      <button
+                        onClick={() => moveSubtask(project.id, st.id, -1)}
+                        disabled={i === 0}
+                        className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
+                        title="Move up"
+                      >
+                        <ChevronUp size={13} />
+                      </button>
+                      <button
+                        onClick={() => moveSubtask(project.id, st.id, 1)}
+                        disabled={i === project.subtasks.length - 1}
+                        className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
+                        title="Move down"
+                      >
+                        <ChevronDown size={13} />
+                      </button>
+                      <button
+                        onClick={() => deleteSubtask(project.id, st.id)}
+                        className="p-0.5 text-slate-400 hover:text-red-500"
+                        title="Delete"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
                   </div>
+                  {notingSubtask === st.id ? (
+                    <textarea
+                      autoFocus
+                      className="mt-1 ml-6 w-[calc(100%-1.5rem)] text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1.5 bg-transparent text-slate-600 dark:text-slate-300 outline-none resize-none focus:border-slate-400"
+                      rows={2}
+                      placeholder="Add a note..."
+                      value={subNoteDraft}
+                      onChange={(e) => setSubNoteDraft(e.target.value)}
+                      onBlur={() => saveNote(st.id)}
+                      onKeyDown={(e) => { if (e.key === 'Escape') { setNotingSubtask(null); setSubNoteDraft('') } }}
+                    />
+                  ) : st.note ? (
+                    <p
+                      className="ml-6 text-xs text-slate-400 cursor-pointer hover:text-slate-600 dark:hover:text-slate-300 whitespace-pre-wrap"
+                      onClick={() => startNoting(st)}
+                    >
+                      {st.note}
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>

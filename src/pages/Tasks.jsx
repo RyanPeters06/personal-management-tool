@@ -335,9 +335,12 @@ export default function Tasks({ onNavigate }) {
                         >
                           {st.done && <Check size={9} className={`text-white ${poppingSubtasks.has(st.id) ? 'task-check-pop' : ''}`} />}
                         </button>
-                        <p className={`text-sm flex-1 min-w-0 truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
-                          {st.title}
-                        </p>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>
+                            {st.title}
+                          </p>
+                          {st.note && <p className="text-xs text-slate-400 truncate">{st.note}</p>}
+                        </div>
                         <button
                           onClick={() => toggleSubtaskToday(proj.id, st.id)}
                           className={`p-1 shrink-0 transition-colors ${st.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-500'}`}

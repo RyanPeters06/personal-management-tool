@@ -502,6 +502,17 @@ const useStore = create((set, get) => ({
     get().save()
   },
 
+  updateSubtask: (projectId, subtaskId, patch) => {
+    set((s) => ({
+      projects: s.projects.map((p) =>
+        p.id === projectId
+          ? { ...p, subtasks: p.subtasks.map((st) => st.id === subtaskId ? { ...st, ...patch } : st) }
+          : p
+      ),
+    }))
+    get().save()
+  },
+
   moveSubtask: (projectId, subtaskId, dir) => {
     set((s) => ({
       projects: s.projects.map((p) => {
