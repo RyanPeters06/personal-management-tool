@@ -14,6 +14,11 @@ function ProjectForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(initial || { title: '', description: '', tag: '', status: 'active' })
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
+  // Live subtasks for the project being edited (edit mode only)
+  const liveSubtasks = useStore((s) => s.projects.find((p) => p.id === initial?.id)?.subtasks) || []
+  const { addSubtask, updateSubtask, deleteSubtask } = useStore()
+  const [newSub, setNewSub] = useState('')
+
   return (
     <div className="space-y-3">
       <div>
@@ -53,6 +58,42 @@ function ProjectForm({ initial, onSave, onCancel }) {
           </select>
         </div>
       </div>
+      {initial?.id && (
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Tasks</label>
+          <div className="space-y-1.5">
+            {liveSubtasks.length === 0 && (
+              <p className="text-xs text-slate-400 italic">No tasks yet.</p>
+            )}
+            {liveSubtasks.map((st) => (
+              <div key={st.id} className="flex items-center gap-2">
+                <input
+                  className={`flex-1 min-w-0 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent outline-none focus:border-slate-400 ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}
+                  value={st.title}
+                  onChange={(e) => updateSubtask(initial.id, st.id, { title: e.target.value })}
+                />
+                <button
+                  onClick={() => deleteSubtask(initial.id, st.id)}
+                  className="p-1 text-slate-400 hover:text-red-500 shrink-0"
+                  title="Delete task"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+          <div className="flex gap-2 mt-2">
+            <input
+              className="flex-1 min-w-0 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400 placeholder-slate-400"
+              placeholder="Add a task..."
+              value={newSub}
+              onChange={(e) => setNewSub(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && newSub.trim()) { addSubtask(initial.id, newSub.trim()); setNewSub('') } }}
+            />
+            <Button size="sm" onClick={() => { if (newSub.trim()) { addSubtask(initial.id, newSub.trim()); setNewSub('') } }} disabled={!newSub.trim()}>Add</Button>
+          </div>
+        </div>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button onClick={() => onSave(form)} disabled={!form.title}>Save</Button>
@@ -72,6 +113,16 @@ export function ProjectCard({ project, hideTag }) {
   const [poppingSubtasks, setPoppingSubtasks] = useState(new Set())
   const [notingSubtask, setNotingSubtask] = useState(null) // subtask id being annotated
   const [subNoteDraft, setSubNoteDraft] = useState('')
+  const [editingSubtask, setEditingSubtask] = useState(null) // subtask id being retitled
+  const [subTitleDraft, setSubTitleDraft] = useState('')
+
+  const startEditingSubtask = (st) => { setEditingSubtask(st.id); setSubTitleDraft(st.title) }
+  const saveSubtaskTitle = (stId) => {
+    const t = subTitleDraft.trim()
+    if (t) updateSubtask(project.id, stId, { title: t })
+    setEditingSubtask(null)
+    setSubTitleDraft('')
+  }
 
   const startNoting = (st) => { setNotingSubtask(st.id); setSubNoteDraft(st.note || '') }
   const saveNote = (stId) => {
@@ -149,8 +200,32 @@ export function ProjectCard({ project, hideTag }) {
                     >
                       {st.done && <Check size={9} className={poppingSubtasks.has(st.id) ? 'task-check-pop' : ''} />}
                     </button>
-                    <span className={`text-sm flex-1 min-w-0 truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{st.title}</span>
+                    {editingSubtask === st.id ? (
+                      <input
+                        autoFocus
+                        className="text-sm flex-1 min-w-0 border border-slate-200 dark:border-slate-600 rounded px-2 py-0.5 bg-transparent text-slate-700 dark:text-slate-200 outline-none focus:border-slate-400"
+                        value={subTitleDraft}
+                        onChange={(e) => setSubTitleDraft(e.target.value)}
+                        onBlur={() => saveSubtaskTitle(st.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') saveSubtaskTitle(st.id)
+                          if (e.key === 'Escape') { setEditingSubtask(null); setSubTitleDraft('') }
+                        }}
+                      />
+                    ) : (
+                      <span
+                        className={`text-sm flex-1 min-w-0 truncate cursor-text ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}
+                        onDoubleClick={() => startEditingSubtask(st)}
+                      >{st.title}</span>
+                    )}
                     <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        onClick={() => startEditingSubtask(st)}
+                        className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                        title="Edit task"
+                      >
+                        <Pencil size={11} />
+                      </button>
                       <button
                         onClick={() => startNoting(st)}
                         className={`p-0.5 hover:text-slate-600 dark:hover:text-slate-200 ${st.note ? 'text-amber-500' : 'text-slate-400'}`}
