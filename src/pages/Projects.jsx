@@ -224,11 +224,14 @@ export default function Projects() {
 
   const usedTags = [...new Set(projects.map((p) => p.tag).filter(Boolean))]
 
-  const filtered = projects.filter((p) => {
-    if (statusFilter !== 'all' && p.status !== statusFilter) return false
-    if (tagFilter !== 'all' && p.tag !== tagFilter) return false
-    return true
-  })
+  const filtered = projects
+    .filter((p) => {
+      if (statusFilter !== 'all' && p.status !== statusFilter) return false
+      if (tagFilter !== 'all' && p.tag !== tagFilter) return false
+      return true
+    })
+    // Personal projects float to the top; otherwise keep existing order
+    .sort((a, b) => ((a.tag === 'Personal' ? 0 : 1) - (b.tag === 'Personal' ? 0 : 1)))
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
