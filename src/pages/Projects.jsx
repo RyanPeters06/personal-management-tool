@@ -11,12 +11,19 @@ import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight, ChevronUp, Stic
 const STATUS_COLORS = { active: 'green', paused: 'yellow', done: 'slate' }
 
 function ProjectForm({ initial, onSave, onCancel }) {
-  const [form, setForm] = useState(initial || { title: '', description: '', tag: '', status: 'active' })
+  // Only track the editable fields — never spread the whole project (that would
+  // clobber live subtasks/notes on save with a stale snapshot).
+  const [form, setForm] = useState({
+    title: initial?.title || '',
+    description: initial?.description || '',
+    tag: initial?.tag || '',
+    status: initial?.status || 'active',
+  })
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   // Live subtasks for the project being edited (edit mode only)
   const liveSubtasks = useStore((s) => s.projects.find((p) => p.id === initial?.id)?.subtasks) || []
-  const { addSubtask, updateSubtask, deleteSubtask } = useStore()
+  const { addSubtask, updateSubtask, deleteSubtask, moveSubtask } = useStore()
   const [newSub, setNewSub] = useState('')
 
   return (
@@ -65,13 +72,29 @@ function ProjectForm({ initial, onSave, onCancel }) {
             {liveSubtasks.length === 0 && (
               <p className="text-xs text-slate-400 italic">No tasks yet.</p>
             )}
-            {liveSubtasks.map((st) => (
+            {liveSubtasks.map((st, i) => (
               <div key={st.id} className="flex items-center gap-2">
                 <input
                   className={`flex-1 min-w-0 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent outline-none focus:border-slate-400 ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}
                   value={st.title}
                   onChange={(e) => updateSubtask(initial.id, st.id, { title: e.target.value })}
                 />
+                <button
+                  onClick={() => moveSubtask(initial.id, st.id, -1)}
+                  disabled={i === 0}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400 shrink-0"
+                  title="Move up"
+                >
+                  <ChevronUp size={14} />
+                </button>
+                <button
+                  onClick={() => moveSubtask(initial.id, st.id, 1)}
+                  disabled={i === liveSubtasks.length - 1}
+                  className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400 shrink-0"
+                  title="Move down"
+                >
+                  <ChevronDown size={14} />
+                </button>
                 <button
                   onClick={() => deleteSubtask(initial.id, st.id)}
                   className="p-1 text-slate-400 hover:text-red-500 shrink-0"
