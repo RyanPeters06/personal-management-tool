@@ -257,22 +257,6 @@ export function ProjectCard({ project, hideTag }) {
                         <StickyNote size={12} />
                       </button>
                       <button
-                        onClick={() => moveSubtask(project.id, st.id, -1)}
-                        disabled={i === 0}
-                        className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
-                        title="Move up"
-                      >
-                        <ChevronUp size={13} />
-                      </button>
-                      <button
-                        onClick={() => moveSubtask(project.id, st.id, 1)}
-                        disabled={i === project.subtasks.length - 1}
-                        className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
-                        title="Move down"
-                      >
-                        <ChevronDown size={13} />
-                      </button>
-                      <button
                         onClick={() => deleteSubtask(project.id, st.id)}
                         className="p-0.5 text-slate-400 hover:text-red-500"
                         title="Delete"
