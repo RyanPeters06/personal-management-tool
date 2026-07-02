@@ -6,7 +6,7 @@ import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
 import TagSelect, { tagColor } from '../components/shared/TagSelect'
-import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, ChevronDown, ChevronRight, ChevronUp } from 'lucide-react'
 
 const STATUS_COLORS = { active: 'green', paused: 'yellow', done: 'slate' }
 
@@ -62,7 +62,7 @@ function ProjectForm({ initial, onSave, onCancel }) {
 }
 
 export function ProjectCard({ project, hideTag }) {
-  const { updateProject, deleteProject, addSubtask, toggleSubtask, deleteSubtask, settings } = useStore()
+  const { updateProject, deleteProject, addSubtask, toggleSubtask, deleteSubtask, moveSubtask, settings } = useStore()
   const customTagColors = settings.customTagColors || {}
   const [expanded, setExpanded] = useState(true)
   const [editing, setEditing] = useState(false)
@@ -128,7 +128,7 @@ export function ProjectCard({ project, hideTag }) {
           <div className="mt-2">
             <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-2">Tasks</p>
             <div className="space-y-1">
-              {project.subtasks.map((st) => (
+              {project.subtasks.map((st, i) => (
                 <div key={st.id} className={`flex items-center gap-2 group ${st.done ? 'task-done' : ''}`}>
                   <button
                     onClick={() => handleToggleSubtask(project.id, st.id, st.done)}
@@ -140,12 +140,31 @@ export function ProjectCard({ project, hideTag }) {
                     {st.done && <Check size={9} className={poppingSubtasks.has(st.id) ? 'task-check-pop' : ''} />}
                   </button>
                   <span className={`text-sm flex-1 min-w-0 truncate ${st.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{st.title}</span>
-                  <button
-                    onClick={() => deleteSubtask(project.id, st.id)}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 text-slate-400 hover:text-red-500 transition-opacity shrink-0"
-                  >
-                    <Trash2 size={11} />
-                  </button>
+                  <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <button
+                      onClick={() => moveSubtask(project.id, st.id, -1)}
+                      disabled={i === 0}
+                      className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
+                      title="Move up"
+                    >
+                      <ChevronUp size={13} />
+                    </button>
+                    <button
+                      onClick={() => moveSubtask(project.id, st.id, 1)}
+                      disabled={i === project.subtasks.length - 1}
+                      className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 disabled:opacity-30 disabled:hover:text-slate-400"
+                      title="Move down"
+                    >
+                      <ChevronDown size={13} />
+                    </button>
+                    <button
+                      onClick={() => deleteSubtask(project.id, st.id)}
+                      className="p-0.5 text-slate-400 hover:text-red-500"
+                      title="Delete"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>

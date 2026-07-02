@@ -13,7 +13,7 @@ const PRIORITY_COLORS = { high: 'red', medium: 'yellow', none: 'slate' }
 
 function TaskForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(
-    initial || { title: '', notes: '', dueDate: '', priority: 'none', tags: [] }
+    initial || { title: '', notes: '', dueDate: '', priority: 'none', tags: [], today: false }
   )
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -50,9 +50,9 @@ function TaskForm({ initial, onSave, onCancel }) {
             />
             <button
               type="button"
-              onClick={() => set('dueDate', format(new Date(), 'yyyy-MM-dd'))}
+              onClick={() => setForm((f) => ({ ...f, dueDate: format(new Date(), 'yyyy-MM-dd'), today: true }))}
               className="px-2.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
-              title="Set to today"
+              title="Set due today and add to Today's focus"
             >
               Today
             </button>
@@ -75,6 +75,17 @@ function TaskForm({ initial, onSave, onCancel }) {
         <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Tags</label>
         <TagSelect value={form.tags} onChange={(v) => set('tags', v)} multi />
       </div>
+      <button
+        type="button"
+        onClick={() => set('today', !form.today)}
+        className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors w-full justify-center ${
+          form.today
+            ? 'border-amber-400 text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20'
+            : 'border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+        }`}
+      >
+        <Sun size={14} /> {form.today ? "In Today's focus" : "Add to Today's focus"}
+      </button>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
         <Button onClick={() => onSave(form)} disabled={!form.title.trim()}>Save</Button>
@@ -152,14 +163,21 @@ export default function Tasks({ onNavigate }) {
       .filter(({ subtasks }) => subtasks.length > 0)
   }, [projects, filter, tagFilter, showProjects])
 
-  const filteredStandalone = tasks.filter((t) => {
-    if (tagFilter !== 'all' && !(t.tags || []).includes(tagFilter)) return false
-    if (completing.has(t.id)) return true // always show animating tasks
-    if (filter === 'today') return t.today && !t.done
-    if (filter === 'active') return !t.done
-    if (filter === 'done') return t.done
-    return true
-  })
+  const filteredStandalone = tasks
+    .filter((t) => {
+      if (tagFilter !== 'all' && !(t.tags || []).includes(tagFilter)) return false
+      if (completing.has(t.id)) return true // always show animating tasks
+      if (filter === 'today') return t.today && !t.done
+      if (filter === 'active') return !t.done
+      if (filter === 'done') return t.done
+      return true
+    })
+    // Personal tasks float to the top; otherwise keep existing order
+    .sort((a, b) => {
+      const ap = (a.tags || []).includes('Personal') ? 0 : 1
+      const bp = (b.tags || []).includes('Personal') ? 0 : 1
+      return ap - bp
+    })
 
   // Items available to flag for "today" (active, not done)
   const planStandalone = tasks.filter((t) => !t.done)

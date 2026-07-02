@@ -502,6 +502,23 @@ const useStore = create((set, get) => ({
     get().save()
   },
 
+  moveSubtask: (projectId, subtaskId, dir) => {
+    set((s) => ({
+      projects: s.projects.map((p) => {
+        if (p.id !== projectId) return p
+        const idx = p.subtasks.findIndex((st) => st.id === subtaskId)
+        if (idx < 0) return p
+        const target = idx + dir
+        if (target < 0 || target >= p.subtasks.length) return p
+        const arr = [...p.subtasks]
+        const [item] = arr.splice(idx, 1)
+        arr.splice(target, 0, item)
+        return { ...p, subtasks: arr }
+      }),
+    }))
+    get().save()
+  },
+
   toggleSubtaskToday: (projectId, subtaskId) => {
     set((s) => ({
       projects: s.projects.map((p) =>
@@ -661,7 +678,7 @@ const useStore = create((set, get) => ({
 
   // ── TASKS (standalone) ──
   addTask2: (task) => {
-    const item = { id: generateId(), title: task.title, notes: task.notes || '', dueDate: task.dueDate || null, priority: task.priority || 'none', tags: task.tags || [], done: false, createdAt: new Date().toISOString() }
+    const item = { id: generateId(), title: task.title, notes: task.notes || '', dueDate: task.dueDate || null, priority: task.priority || 'none', tags: task.tags || [], today: task.today || false, done: false, createdAt: new Date().toISOString() }
     set((s) => ({ tasks: [...s.tasks, item] }))
     get().save()
   },
