@@ -327,7 +327,10 @@ export default function Settings() {
       {/* About */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4">
         <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Life Manager</p>
-        <p className="text-xs text-slate-400">Version 1.0.0 · All data stored locally on your machine</p>
+        <p className="text-xs text-slate-400">
+          Version {__APP_VERSION__} · Build {new Date(__BUILD_TIME__).toLocaleString()}
+        </p>
+        <p className="text-xs text-slate-400 mt-0.5">A local copy is always kept on this device.</p>
       </div>
     </div>
   )

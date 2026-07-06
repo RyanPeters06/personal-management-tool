@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const Store = require('electron-store')
+const { DEPLOYED_URL } = require('./app-config')
 
 const store = new Store()
 const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
@@ -45,10 +46,24 @@ function createWindow() {
     backgroundColor: '#0f172a',
   })
 
+  const loadBundled = () => win.loadFile(path.join(__dirname, '../dist/index.html'))
+
   if (isDev) {
     win.loadURL('http://localhost:5273')
+  } else if (DEPLOYED_URL) {
+    // Load the same deployed build the phone uses so versions never drift.
+    // If it can't be reached (offline / server down), fall back to the bundled
+    // build so the app always opens. The service worker caches the shell after
+    // the first successful load, so subsequent offline opens work from the URL.
+    win.webContents.once('did-fail-load', (_e, errorCode, _desc, validatedURL, isMainFrame) => {
+      // -3 is ERR_ABORTED (e.g. normal redirect) — ignore; only fall back for the top frame
+      if (isMainFrame && errorCode !== -3 && validatedURL.startsWith(DEPLOYED_URL)) {
+        loadBundled()
+      }
+    })
+    win.loadURL(DEPLOYED_URL)
   } else {
-    win.loadFile(path.join(__dirname, '../dist/index.html'))
+    loadBundled()
   }
 }
 
