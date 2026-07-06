@@ -80,8 +80,8 @@ export default function Settings() {
 
       {/* Claude API Key */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">
-        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Claude API Key</p>
-        <p className="text-xs text-slate-400 mb-3">Required for AI Import. Get yours at <span className="font-medium">console.anthropic.com</span>. Stored locally only, never synced.</p>
+        <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Claude API Key <span className="text-xs font-normal text-slate-400">(optional)</span></p>
+        <p className="text-xs text-slate-400 mb-3">The deployed app uses a secure server-side key, so this is only needed as a personal override (e.g. for local development). Get yours at <span className="font-medium">console.anthropic.com</span>. Stored locally only, never synced.</p>
         <div className="flex gap-2">
           <div className="relative flex-1">
             <input

@@ -74,7 +74,10 @@ const defaultData = {
     darkMode: false,
     accent: 'slate',
     sidebarCollapsed: false,
-    claudeApiKey: import.meta.env.VITE_CLAUDE_API_KEY || '',
+    // Optional bring-your-own-key override. The deployed app uses the
+    // /api/anthropic proxy (key lives in Vercel env), so no key is baked
+    // into the client bundle.
+    claudeApiKey: '',
     customTags: [],
     customTagColors: {},
   },

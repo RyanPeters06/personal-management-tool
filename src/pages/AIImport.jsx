@@ -1,6 +1,6 @@
 ﻿import { useState, useRef, useEffect, Component } from 'react'
 import ReactMarkdown from 'react-markdown'
-import Anthropic from '@anthropic-ai/sdk'
+import { callAnthropic, hasAIAccess } from '../lib/anthropic'
 import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
@@ -356,7 +356,7 @@ function ChatMode({ settings, storeState }) {
 
   const sendMessage = async (text) => {
     if (!text || loading) return
-    if (!settings.claudeApiKey) { setError('Add your Claude API key in Settings first.'); return }
+    if (!hasAIAccess(settings)) { setError('Add your Claude API key in Settings first.'); return }
     if (!navigator.onLine) { setError("You're offline."); return }
 
     const newMessages = [...messages, { role: 'user', content: text }]
@@ -366,14 +366,13 @@ function ChatMode({ settings, storeState }) {
     setError('')
 
     try {
-      const client = new Anthropic({ apiKey: settings.claudeApiKey, dangerouslyAllowBrowser: true })
       const systemPrompt = buildChatSystemPrompt(storeState)
-      const response = await client.messages.create({
+      const response = await callAnthropic({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 2048,
         system: systemPrompt,
         messages: newMessages,
-      })
+      }, settings.claudeApiKey)
       const reply = response.content?.[0]?.text || '(No response)'
       setMessages((m) => [...m, { role: 'assistant', content: reply }])
     } catch (e) {
@@ -566,7 +565,7 @@ export default function AIImport() {
   useEffect(() => { sessionDraft.flaggedChoices = flaggedChoices }, [flaggedChoices])
   useEffect(() => { sessionDraft.confirmedRemovals = confirmedRemovals }, [confirmedRemovals])
 
-  const hasKey = !!settings.claudeApiKey
+  const hasKey = hasAIAccess(settings)
 
   const loadFile = async () => {
     if (window.electronAPI?.openFile) {
@@ -588,13 +587,12 @@ export default function AIImport() {
   }
 
   const callClaude = async (messages) => {
-    const client = new Anthropic({ apiKey: settings.claudeApiKey, dangerouslyAllowBrowser: true })
-    const message = await client.messages.create({
+    const message = await callAnthropic({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 4096,
       system: buildSystemPrompt(useStore.getState()),
       messages,
-    })
+    }, settings.claudeApiKey)
     return extractJSON(message.content?.[0]?.text || '')
   }
 
@@ -774,15 +772,14 @@ export default function AIImport() {
     setRefineLoading(true)
     setRefineError('')
     try {
-      const client = new Anthropic({ apiKey: settings.claudeApiKey, dangerouslyAllowBrowser: true })
-      const message = await client.messages.create({
+      const message = await callAnthropic({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 4096,
         system: `You are editing a pending import payload for a life manager app. The user has already parsed their data into the JSON structure below and wants to refine it before accepting. Apply the user's instruction to the JSON and return the updated JSON in exactly the same format. Only change what the user asks — preserve everything else. Return ONLY the JSON object, no explanation, no code fences.`,
         messages: [
           { role: 'user', content: `Current pending data:\n${JSON.stringify(parsed, null, 2)}\n\nInstruction: ${refineText.trim()}` },
         ],
-      })
+      }, settings.claudeApiKey)
       const updated = extractJSON(message.content?.[0]?.text || '')
       setParsed(updated)
       const initRemovals = {}
@@ -829,7 +826,7 @@ export default function AIImport() {
         <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4 mb-5">
           <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
           <p className="text-sm text-amber-700 dark:text-amber-300">
-            No API key found. Go to <strong>Settings</strong> and add your Claude API key to use this feature.
+            AI isn't configured here. Use the deployed app, or add your own Claude API key in <strong>Settings</strong>.
           </p>
         </div>
       )}
