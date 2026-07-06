@@ -83,6 +83,31 @@ const defaultData = {
   },
 }
 
+// The 13 top-level data keys that make up a full copy of the user's data —
+// used by save(), export, and cloud sync so they can never drift apart.
+export function serializeData(s) {
+  return {
+    todos: s.todos,
+    finance: s.finance,
+    calendar: s.calendar,
+    goals: s.goals,
+    projects: s.projects,
+    deadlines: s.deadlines,
+    watchlist: s.watchlist,
+    tasks: s.tasks,
+    wantList: s.wantList,
+    ideas: s.ideas,
+    workouts: s.workouts,
+    journal: s.journal,
+    settings: s.settings,
+  }
+}
+
+// Injection point for the cloud sync layer (src/store/sync.js registers a
+// handler here — keeps useStore free of any sync/supabase imports).
+let onLocalSave = null
+export function setOnLocalSave(fn) { onLocalSave = fn }
+
 const useStore = create((set, get) => ({
   ...defaultData,
   loaded: false,
@@ -119,27 +144,15 @@ const useStore = create((set, get) => ({
   },
 
   save: () => {
-    const s = get()
-    const data = {
-      todos: s.todos,
-      finance: s.finance,
-      calendar: s.calendar,
-      goals: s.goals,
-      projects: s.projects,
-      deadlines: s.deadlines,
-      watchlist: s.watchlist,
-      tasks: s.tasks,
-      wantList: s.wantList,
-      ideas: s.ideas,
-      workouts: s.workouts,
-      journal: s.journal,
-      settings: s.settings,
-    }
+    const data = serializeData(get())
+    // Local copy is always written first — it is the primary store.
     if (window.electronAPI) {
       window.electronAPI.saveData(data)
     } else {
       localStorage.setItem('lifeManagerData', JSON.stringify(data))
     }
+    // Then notify the sync layer (no-op if sync isn't configured)
+    onLocalSave?.(data)
   },
 
   updateSettings: (patch) => {

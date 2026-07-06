@@ -4,6 +4,7 @@ import PageHeader from '../components/shared/PageHeader'
 import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import { tagColor, COLOR_OPTIONS } from '../components/shared/TagSelect'
+import SyncSettings from '../components/SyncSettings'
 import { Moon, Sun, Eye, EyeOff, Trash2, X, Plus, Download, AlertTriangle } from 'lucide-react'
 
 const ACCENTS = [
@@ -166,6 +167,9 @@ export default function Settings() {
           ))}
         </div>
       </div>
+
+      {/* Cloud sync + local snapshots */}
+      <SyncSettings />
 
       {/* Export & Backup */}
       <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-4">

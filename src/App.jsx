@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import useStore from './store/useStore'
 import Sidebar from './components/Sidebar'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
+import { initSync, reconcile } from './store/sync'
 import { WifiOff, Wifi, Menu } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Finance from './pages/Finance'
@@ -40,7 +41,11 @@ export default function App() {
   const { online, justReconnected } = useOnlineStatus()
 
   useEffect(() => {
-    loadFromDisk()
+    loadFromDisk().then(() => {
+      // Local data is loaded first; then start cloud sync (no-op if not configured)
+      initSync()
+      reconcile('startup')
+    })
   }, [])
 
   if (!loaded) {
