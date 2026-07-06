@@ -7,6 +7,13 @@
       "runtimeArgs": ["run", "dev"],
       "port": 5273,
       "autoPort": false
+    },
+    {
+      "name": "web-preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "5274"],
+      "port": 5274,
+      "autoPort": false
     }
   ]
 }

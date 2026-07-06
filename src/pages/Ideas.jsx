@@ -1,6 +1,6 @@
-﻿import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import useStore from '../store/useStore'
-import { Plus, Trash2, Lightbulb, Search } from 'lucide-react'
+import { Plus, Trash2, Lightbulb, Search, ArrowLeft } from 'lucide-react'
 
 
 export default function Ideas() {
@@ -10,6 +10,8 @@ export default function Ideas() {
   const [titleDraft, setTitleDraft] = useState('')
   const [bodyDraft, setBodyDraft] = useState('')
   const [confirmDelete, setConfirmDelete] = useState(null)
+  // Mobile: show one panel at a time (list → tap → editor with back button)
+  const [mobileView, setMobileView] = useState('list')
   const titleRef = useRef(null)
   const bodyRef = useRef(null)
 
@@ -33,7 +35,7 @@ export default function Ideas() {
   }, [ideas.length])
 
   function handleNew() {
-    addIdea({ title: 'Untitled', description: '', category: 'other', status: 'raw', tags: [] })
+    addIdea({ title: 'Untitled', description: '', status: 'raw', tags: [] })
     setTimeout(() => {
       const all = useStore.getState().ideas
       const newest = all[all.length - 1]
@@ -41,9 +43,15 @@ export default function Ideas() {
         setSelectedId(newest.id)
         setTitleDraft('Untitled')
         setBodyDraft('')
+        setMobileView('editor')
         setTimeout(() => titleRef.current?.select(), 50)
       }
     }, 0)
+  }
+
+  function openIdea(id) {
+    setSelectedId(id)
+    setMobileView('editor')
   }
 
   function saveTitle() {
@@ -65,6 +73,7 @@ export default function Ideas() {
       const remaining = ideas.filter((i) => i.id !== id)
       setSelectedId(remaining[Math.min(idx, remaining.length - 1)]?.id || null)
       setConfirmDelete(null)
+      setMobileView('list')
     } else {
       setConfirmDelete(id)
       setTimeout(() => setConfirmDelete(null), 3000)
@@ -83,8 +92,8 @@ export default function Ideas() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left panel */}
-      <div className="w-64 shrink-0 border-r border-slate-200 dark:border-slate-700 flex flex-col bg-white dark:bg-slate-800">
+      {/* Left panel — full width on mobile (list view), fixed column on desktop */}
+      <div className={`${mobileView === 'editor' ? 'hidden md:flex' : 'flex'} w-full md:w-64 shrink-0 border-r border-slate-200 dark:border-slate-700 flex-col bg-white dark:bg-slate-800`}>
         <div className="px-3 pt-4 pb-2 border-b border-slate-100 dark:border-slate-700">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Ideas</span>
@@ -117,7 +126,7 @@ export default function Ideas() {
           {filtered.map((idea) => (
             <button
               key={idea.id}
-              onClick={() => setSelectedId(idea.id)}
+              onClick={() => openIdea(idea.id)}
               className={`w-full text-left px-3 py-2.5 transition-colors group relative ${
                 selectedId === idea.id
                   ? 'bg-slate-100 dark:bg-slate-700'
@@ -135,7 +144,7 @@ export default function Ideas() {
                 className={`absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded transition-all ${
                   confirmDelete === idea.id
                     ? 'text-red-500 opacity-100'
-                    : 'text-slate-300 opacity-0 group-hover:opacity-100 hover:text-red-400'
+                    : 'text-slate-300 opacity-100 hover:text-red-400 md:opacity-0 md:group-hover:opacity-100'
                 }`}
                 title={confirmDelete === idea.id ? 'Click again to confirm' : 'Delete'}
               >
@@ -146,10 +155,18 @@ export default function Ideas() {
         </div>
       </div>
 
-      {/* Right panel */}
-      <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 dark:bg-slate-900">
+      {/* Right panel — full width on mobile (editor view) */}
+      <div className={`${mobileView === 'list' ? 'hidden md:flex' : 'flex'} flex-1 flex-col overflow-hidden bg-slate-50 dark:bg-slate-900`}>
         {selected ? (
-          <div className="flex-1 overflow-y-auto px-10 py-8 max-w-3xl w-full mx-auto">
+          <div className="flex-1 overflow-y-auto px-5 md:px-10 py-6 md:py-8 max-w-3xl w-full mx-auto">
+            {/* Mobile back button */}
+            <button
+              onClick={() => setMobileView('list')}
+              className="md:hidden flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 mb-4"
+            >
+              <ArrowLeft size={14} /> All ideas
+            </button>
+
             {selected.createdAt && (
               <p className="text-xs text-slate-400 mb-4">
                 {new Date(selected.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

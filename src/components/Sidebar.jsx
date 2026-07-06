@@ -15,6 +15,7 @@ import {
   FolderKanban,
   Tv,
   BookOpen,
+  X,
 } from 'lucide-react'
 
 const NAV = [
@@ -32,30 +33,47 @@ const NAV = [
   { id: 'assistant', label: 'Assistant', icon: Sparkles },
 ]
 
-export default function Sidebar({ currentPage, onNavigate }) {
+// mobile: rendered inside a slide-in drawer — always expanded, closes on selection
+export default function Sidebar({ currentPage, onNavigate, mobile = false, onClose }) {
   const { settings, updateSettings } = useStore()
-  const collapsed = settings.sidebarCollapsed
+  const collapsed = !mobile && settings.sidebarCollapsed
+
+  const navigate = (id) => {
+    onNavigate(id)
+    if (mobile) onClose?.()
+  }
 
   return (
     <aside
-      className={`flex flex-col shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 transition-all duration-200 ${collapsed ? 'w-14' : 'w-52'}`}
+      className={`flex-col shrink-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 ${
+        mobile
+          ? 'flex h-full w-64'
+          : `hidden md:flex transition-all duration-200 ${collapsed ? 'w-14' : 'w-52'}`
+      }`}
     >
       {/* Logo / Title */}
       <div className={`flex items-center px-3 py-4 border-b border-slate-100 dark:border-slate-700 ${collapsed ? 'justify-center' : ''}`}>
         {!collapsed && (
-          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate">Life Manager</span>
+          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate flex-1">Life Manager</span>
+        )}
+        {mobile && (
+          <button onClick={onClose} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+            <X size={18} />
+          </button>
         )}
       </div>
 
       {/* Nav links */}
-      <nav className="flex-1 py-3 flex flex-col gap-0.5 px-2">
+      <nav className="flex-1 py-3 flex flex-col gap-0.5 px-2 overflow-y-auto">
         {NAV.map(({ id, label, icon: Icon }) => {
           const active = currentPage === id
           return (
             <button
               key={id}
-              onClick={() => onNavigate(id)}
-              className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm font-medium transition-colors w-full text-left ${
+              onClick={() => navigate(id)}
+              className={`flex items-center gap-2.5 px-2 rounded-lg text-sm font-medium transition-colors w-full text-left ${
+                mobile ? 'py-2.5' : 'py-2'
+              } ${
                 active
                   ? 'text-white'
                   : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200'
@@ -73,8 +91,10 @@ export default function Sidebar({ currentPage, onNavigate }) {
       {/* Bottom: Settings + Collapse */}
       <div className="px-2 pb-3 flex flex-col gap-0.5">
         <button
-          onClick={() => onNavigate('settings')}
-          className={`flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors w-full ${collapsed ? 'justify-center' : ''} ${currentPage === 'settings' ? 'text-white' : ''}`}
+          onClick={() => navigate('settings')}
+          className={`flex items-center gap-2.5 px-2 rounded-lg text-sm font-medium text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-700 dark:hover:text-slate-200 transition-colors w-full ${
+            mobile ? 'py-2.5' : 'py-2'
+          } ${collapsed ? 'justify-center' : ''} ${currentPage === 'settings' ? 'text-white' : ''}`}
           style={currentPage === 'settings' ? { backgroundColor: 'var(--accent-500)' } : {}}
           title={collapsed ? 'Settings' : undefined}
         >
@@ -82,14 +102,16 @@ export default function Sidebar({ currentPage, onNavigate }) {
           {!collapsed && <span>Settings</span>}
         </button>
 
-        <button
-          onClick={() => updateSettings({ sidebarCollapsed: !collapsed })}
-          className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition-colors w-full justify-center"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
-          {!collapsed && <span className="text-xs">Collapse</span>}
-        </button>
+        {!mobile && (
+          <button
+            onClick={() => updateSettings({ sidebarCollapsed: !collapsed })}
+            className="flex items-center gap-2.5 px-2 py-2 rounded-lg text-sm text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 hover:text-slate-600 dark:hover:text-slate-300 transition-colors w-full justify-center"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight size={15} /> : <ChevronLeft size={15} />}
+            {!collapsed && <span className="text-xs">Collapse</span>}
+          </button>
+        )}
       </div>
     </aside>
   )

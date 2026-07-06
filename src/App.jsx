@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import useStore from './store/useStore'
 import Sidebar from './components/Sidebar'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
-import { WifiOff, Wifi } from 'lucide-react'
+import { WifiOff, Wifi, Menu } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Finance from './pages/Finance'
 import CalendarPage from './pages/CalendarPage'
@@ -35,6 +35,7 @@ const PAGES = {
 
 export default function App() {
   const [page, setPage] = useState('dashboard')
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const { loadFromDisk, loaded, settings } = useStore()
   const { online, justReconnected } = useOnlineStatus()
 
@@ -54,8 +55,31 @@ export default function App() {
 
   return (
     <div className={`flex h-screen overflow-hidden bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100`}>
+      {/* Desktop sidebar (hidden on mobile) */}
       <Sidebar currentPage={page} onNavigate={setPage} />
+
+      {/* Mobile drawer */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+          <div className="absolute inset-y-0 left-0 shadow-2xl">
+            <Sidebar mobile currentPage={page} onNavigate={setPage} onClose={() => setDrawerOpen(false)} />
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Mobile top bar */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
+          <button
+            onClick={() => setDrawerOpen(true)}
+            className="p-1 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
+            aria-label="Open menu"
+          >
+            <Menu size={20} />
+          </button>
+          <span className="font-semibold text-sm text-slate-700 dark:text-slate-200">Life Manager</span>
+        </div>
         {!online && (
           <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 dark:bg-amber-950/40 border-b border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-400 text-xs shrink-0">
             <WifiOff size={13} />

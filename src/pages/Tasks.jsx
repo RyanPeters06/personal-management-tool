@@ -284,13 +284,13 @@ export default function Tasks({ onNavigate }) {
                   <div className="flex gap-1 items-center">
                     <button
                       onClick={() => updateTask2(task.id, { today: !task.today })}
-                      className={`p-1 transition-colors ${task.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-500'}`}
+                      className={`p-1 transition-colors ${task.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-amber-500'}`}
                       title={task.today ? 'Remove from today' : 'Add to today'}
                     >
                       <Sun size={13} />
                     </button>
-                    <button onClick={() => setEditTask(task)} className="p-1 text-slate-400 hover:text-slate-600 opacity-0 group-hover:opacity-100"><Pencil size={13} /></button>
-                    <button onClick={() => deleteTask2(task.id)} className="p-1 text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100"><Trash2 size={13} /></button>
+                    <button onClick={() => setEditTask(task)} className="p-1 text-slate-400 hover:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Pencil size={13} /></button>
+                    <button onClick={() => deleteTask2(task.id)} className="p-1 text-slate-400 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={13} /></button>
                   </div>
                 </div>
               )
@@ -343,7 +343,7 @@ export default function Tasks({ onNavigate }) {
                         </div>
                         <button
                           onClick={() => toggleSubtaskToday(proj.id, st.id)}
-                          className={`p-1 shrink-0 transition-colors ${st.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-0 group-hover:opacity-100 hover:text-amber-500'}`}
+                          className={`p-1 shrink-0 transition-colors ${st.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-amber-500'}`}
                           title={st.today ? 'Remove from today' : 'Add to today'}
                         >
                           <Sun size={13} />

@@ -319,7 +319,7 @@ export default function CalendarPage() {
                     </div>
                   </div>
                   {cd && !d.done && <span className={`text-xs shrink-0 ${cd.color}`}>{cd.label}</span>}
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                  <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                     <button onClick={() => setEditDeadline(d)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={13} /></button>
                     <button onClick={() => deleteDeadline(d.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
                   </div>
@@ -352,7 +352,7 @@ export default function CalendarPage() {
                     {item.notes && <p className="text-xs text-slate-400 mt-0.5">{item.notes}</p>}
                   </div>
                   {item._type === 'event' && (
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                       <button onClick={() => setEditEvent(item)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12} /></button>
                       <button onClick={() => deleteEvent(item.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12} /></button>
                     </div>
@@ -383,7 +383,7 @@ export default function CalendarPage() {
                 {e.time && <p className="text-xs text-slate-400 mt-0.5">{e.time}</p>}
                 {e.notes && <p className="text-xs text-slate-400 mt-0.5 truncate">{e.notes}</p>}
               </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                 <button onClick={() => setEditEvent(e)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={14} /></button>
                 <button onClick={() => deleteEvent(e.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={14} /></button>
               </div>

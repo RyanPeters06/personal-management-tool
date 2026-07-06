@@ -241,7 +241,7 @@ export function ProjectCard({ project, hideTag }) {
                         onDoubleClick={() => startEditingSubtask(st)}
                       >{st.title}</span>
                     )}
-                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="flex items-center opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                       <button
                         onClick={() => startEditingSubtask(st)}
                         className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"

@@ -309,7 +309,7 @@ export default function Dashboard({ onNavigate }) {
       </div>
 
       {/* Row 4: Quick stat tiles */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatTile icon={ShoppingCart} label={wantCount === 1 ? 'item on your want list' : 'items on your want list'} value={wantCount} onClick={() => onNavigate('want-list')} />
         <StatTile icon={Lightbulb} label={ideaCount === 1 ? 'idea saved' : 'ideas saved'} value={ideaCount} onClick={() => onNavigate('ideas')} />
         <StatTile icon={Sun} label={journaledToday ? 'journaled today' : 'no journal entry today'} value={journaledToday ? '✓' : '—'} onClick={() => onNavigate('journal')} />

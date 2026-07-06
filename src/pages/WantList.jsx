@@ -172,7 +172,7 @@ function WantItemCard({ item, customTagColors, onEdit, onDelete, onMarkBought, o
               <RotateCcw size={10} /> Undo
             </button>
           )}
-          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
             <button onClick={onEdit} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={13} /></button>
             <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
           </div>

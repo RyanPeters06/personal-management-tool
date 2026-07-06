@@ -64,7 +64,7 @@ function ExerciseRow({ exercise, sessionId, onUpdate, onDelete }) {
         </span>
       )}
       {exercise.notes && <span className="text-xs text-slate-400 truncate max-w-[120px]">{exercise.notes}</span>}
-      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
         <button onClick={() => setEditing(true)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={12} /></button>
         <button onClick={onDelete} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={12} /></button>
       </div>
@@ -510,7 +510,7 @@ export default function Workouts() {
                 </div>
                 <button
                   onClick={() => deleteLog(log.id)}
-                  className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="p-1 text-slate-300 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity"
                 >
                   <Trash2 size={13} />
                 </button>

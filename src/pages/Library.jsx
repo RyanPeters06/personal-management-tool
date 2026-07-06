@@ -159,7 +159,7 @@ function GameCard({ game }) {
           </div>
           {game.notes && <p className="text-xs text-slate-400 mt-0.5 truncate">{game.notes}</p>}
         </div>
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+        <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
           {!game.isSeries && (
             <select
               className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 bg-transparent text-slate-600 dark:text-slate-300"
@@ -321,7 +321,7 @@ export default function Library() {
                   {s.notes && <p className="text-xs text-slate-400 mt-0.5 truncate">{s.notes}</p>}
                 </div>
                 <select
-                  className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 bg-transparent text-slate-600 dark:text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                  className="text-xs border border-slate-200 dark:border-slate-600 rounded px-2 py-1 bg-transparent text-slate-600 dark:text-slate-300 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0"
                   value={s.status}
                   onChange={(e) => updateShow(s.id, { status: e.target.value })}
                 >
@@ -329,7 +329,7 @@ export default function Library() {
                   <option value="watching">Watching</option>
                   <option value="done">Done</option>
                 </select>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity shrink-0">
                   <button onClick={() => setEditShow(s)} className="p-1 text-slate-400 hover:text-slate-600"><Pencil size={13} /></button>
                   <button onClick={() => deleteShow(s.id)} className="p-1 text-slate-400 hover:text-red-500"><Trash2 size={13} /></button>
                 </div>
