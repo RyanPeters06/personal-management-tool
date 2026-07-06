@@ -42,16 +42,34 @@ async function callDirect({ model, max_tokens, system, messages }, apiKey) {
   return res.json()
 }
 
+async function getAuthToken() {
+  try {
+    // Lazy import so this module works even when Supabase isn't configured
+    const { supabase } = await import('./supabase')
+    if (!supabase) return null
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token || null
+  } catch {
+    return null
+  }
+}
+
 async function callProxy(payload, apiKey) {
+  const token = await getAuthToken()
   const res = await fetch(`${API_BASE}/api/anthropic`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+    },
     // apiKey is only forwarded as an optional bring-your-own-key override
     body: JSON.stringify({ ...payload, ...(apiKey ? { apiKey } : {}) }),
   })
   if (!res.ok) {
-    // 404/405 means no proxy at this origin (e.g. plain vite dev server)
-    if (res.status === 404 || res.status === 405) {
+    // 404/405 => no proxy at this origin (e.g. plain vite dev server).
+    // 401 => proxy requires sign-in and we aren't authorized.
+    // In both cases, fall back to a personal key if the user has one.
+    if (res.status === 404 || res.status === 405 || res.status === 401) {
       const err = new Error('proxy-unavailable')
       err.code = 'proxy-unavailable'
       throw err
@@ -64,14 +82,16 @@ async function callProxy(payload, apiKey) {
 // payload: { model, max_tokens, system?, messages }
 // settingsKey: optional user-provided key from Settings
 export async function callAnthropic(payload, settingsKey) {
+  const NOT_CONFIGURED = 'AI is not configured. Add your Claude API key in Settings, or use the deployed app.'
   if (proxyLikelyAvailable()) {
     try {
       return await callProxy(payload, settingsKey)
     } catch (e) {
-      if (e.code !== 'proxy-unavailable' || !settingsKey) throw e
-      // fall through to direct call with the user's own key
+      if (e.code !== 'proxy-unavailable') throw e
+      // Proxy unreachable / not authorized — fall back to a personal key if set
+      if (!settingsKey) throw new Error(NOT_CONFIGURED)
     }
   }
-  if (!settingsKey) throw new Error('AI is not configured. Add your Claude API key in Settings, or use the deployed app.')
+  if (!settingsKey) throw new Error(NOT_CONFIGURED)
   return callDirect(payload, settingsKey)
 }

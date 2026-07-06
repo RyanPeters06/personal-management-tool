@@ -17,6 +17,12 @@ const MAX_BACKUPS = 5
 const PUSH_DEBOUNCE_MS = 1500
 const RECONCILE_MIN_INTERVAL_MS = 2000
 
+// The Claude API key is a local-only secret and must never leave the device —
+// strip it from anything sent to the cloud (clone first, never mutate state).
+function forCloud(data) {
+  return { ...data, settings: { ...data.settings, claudeApiKey: '' } }
+}
+
 // ─── Sync status (subscribable from UI) ──────────────────────────────────────
 
 export const useSyncStatus = create(() => ({
@@ -92,7 +98,7 @@ async function pushNow() {
   if (!session) return
 
   const meta = loadMeta()
-  const data = serializeData(useStore.getState())
+  const data = forCloud(serializeData(useStore.getState()))
   const ts = meta.updatedAt || Date.now()
 
   setStatus({ syncing: true, error: '' })
@@ -176,9 +182,12 @@ export async function reconcile(reason = 'manual') {
         serializeData(useStore.getState()),
         meta.dirty ? 'conflict — local changes replaced by newer cloud copy' : 'before applying cloud update'
       )
+      // Keep this device's local-only API key — the cloud copy never has it.
+      const localKey = useStore.getState().settings?.claudeApiKey || ''
+      const incoming = { ...row.data, settings: { ...row.data.settings, claudeApiKey: localKey } }
       applyingRemote = true
       try {
-        useStore.getState().restoreFromBackup(row.data)
+        useStore.getState().restoreFromBackup(incoming)
       } finally {
         applyingRemote = false
       }
@@ -188,7 +197,13 @@ export async function reconcile(reason = 'manual') {
       saveMeta(m)
       setStatus({ pendingChanges: false, lastSyncedAt: Date.now() })
     } else if (meta.dirty || localTs > remoteTs) {
-      // Local is newer (or has queued offline changes) — push it up
+      // Local is newer (or has queued offline changes) — it wins and overwrites
+      // the cloud. If we had unsynced local changes AND the cloud copy differs,
+      // this is a genuine conflict: snapshot the losing cloud copy first so it's
+      // always recoverable (symmetric with the remote-wins path above).
+      if (meta.dirty && JSON.stringify(row.data) !== JSON.stringify(forCloud(serializeData(useStore.getState())))) {
+        takeSnapshot(row.data, 'conflict — cloud copy replaced by newer local changes')
+      }
       await pushNow()
     } else {
       setStatus({ lastSyncedAt: Date.now() })

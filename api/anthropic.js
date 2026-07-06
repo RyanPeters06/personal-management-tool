@@ -4,9 +4,35 @@
 const ALLOWED_MODEL_PREFIX = 'claude-'
 const MAX_TOKENS_CAP = 8192
 
+// Optional gate: when PROXY_REQUIRE_AUTH is "true", only signed-in users (valid
+// Supabase session token in the Authorization header) may use the server key.
+// This stops anyone who discovers the URL from spending your Anthropic budget.
+async function isAuthorized(req) {
+  if (process.env.PROXY_REQUIRE_AUTH !== 'true') return true
+  const auth = req.headers.authorization || ''
+  const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+  if (!token) return false
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL
+  const anon = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY
+  if (!url || !anon) return false
+  try {
+    const r = await fetch(`${url}/auth/v1/user`, {
+      headers: { apikey: anon, authorization: `Bearer ${token}` },
+    })
+    return r.ok
+  } catch {
+    return false
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
+    return
+  }
+
+  if (!(await isAuthorized(req))) {
+    res.status(401).json({ error: 'Unauthorized' })
     return
   }
 
