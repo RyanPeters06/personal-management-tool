@@ -9,5 +9,5 @@
 //
 // Can also be overridden at runtime with the LM_APP_URL env var.
 module.exports = {
-  DEPLOYED_URL: process.env.LM_APP_URL || '',
+  DEPLOYED_URL: process.env.LM_APP_URL || 'https://personal-management-tool.vercel.app',
 }
