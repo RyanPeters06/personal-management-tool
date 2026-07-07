@@ -63,10 +63,21 @@
   box-sizing: border-box;
 }
 
-body {
+html, body {
   margin: 0;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  height: 100%;
+  overflow: hidden;
 }
 
 .dark body {
@@ -135,4 +146,13 @@ body {
 }
 .no-drag {
   -webkit-app-region: no-drag;
+}
+
+/* iOS Safari auto-zooms into any text input under 16px on focus, regardless
+   of the viewport meta tag. Force a safe minimum on small screens only —
+   desktop keeps its smaller text-xs inputs untouched. */
+@media (max-width: 767px) {
+  input, textarea, select {
+    font-size: 16px;
+  }
 }
