@@ -3,6 +3,7 @@ import useStore from './store/useStore'
 import Sidebar from './components/Sidebar'
 import { useOnlineStatus } from './hooks/useOnlineStatus'
 import { initSync, reconcile } from './store/sync'
+import PullToRefresh from './components/PullToRefresh'
 import { WifiOff, Wifi, Menu } from 'lucide-react'
 import Dashboard from './pages/Dashboard'
 import Finance from './pages/Finance'
@@ -118,8 +119,10 @@ export default function App() {
             <span>Back online — the Assistant is available again.</span>
           </div>
         )}
-        <main className="flex-1 overflow-y-auto">
-          <PageComponent onNavigate={setPage} />
+        <main className="flex-1 flex overflow-hidden">
+          <PullToRefresh onRefresh={() => reconcile('manual')}>
+            <PageComponent onNavigate={setPage} />
+          </PullToRefresh>
         </main>
       </div>
     </div>
