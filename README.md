@@ -55,6 +55,8 @@ npm run build
 
 Output is in the `/dist` folder.
 
+> **Known issue (Windows):** `npm run build` may fail with `Cannot create symbolic link : A required privilege is not held by the client.` This is electron-builder trying to extract bundled macOS code-signing tools, which requires either enabling **Developer Mode** (Settings → Privacy & Security → For developers) or running the build from an elevated (Administrator) terminal. It does not affect `npm run dev` or the deployed web/PWA build (`npm run build:web`).
+
 ## AI Import Setup
 
 To use the AI Import feature, you need a Claude API key from [console.anthropic.com](https://console.anthropic.com).

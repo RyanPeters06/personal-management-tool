@@ -59,6 +59,19 @@ function getDeviceId() {
   return meta.deviceId
 }
 
+// Data that existed locally before sync was ever added has no updatedAt.
+// Defaulting that to 0 would make it look infinitely old — a fresh empty
+// account signed in elsewhere would then "win" and overwrite real, unsynced
+// data. Stamp it with a real "now" on first run instead, so pre-existing
+// data competes fairly by recency rather than being guaranteed to lose.
+function ensureLocalTimestamp() {
+  const meta = loadMeta()
+  if (!meta.updatedAt) {
+    meta.updatedAt = Date.now()
+    saveMeta(meta)
+  }
+}
+
 // ─── Local snapshots (ring buffer, written before any overwrite) ─────────────
 
 export function listSnapshots() {
@@ -268,6 +281,7 @@ export function initSync() {
   if (initialized || !supabase) return
   initialized = true
 
+  ensureLocalTimestamp()
   setOnLocalSave(handleLocalSave)
   setStatus({ pendingChanges: !!loadMeta().dirty })
 
