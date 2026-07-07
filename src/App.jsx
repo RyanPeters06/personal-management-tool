@@ -34,11 +34,27 @@ const PAGES = {
   settings: Settings,
 }
 
+const DRAWER_TRANSITION_MS = 220
+
 export default function App() {
   const [page, setPage] = useState('dashboard')
+  // drawerMounted keeps the drawer in the DOM long enough for the closing
+  // transition to play; drawerOpen toggles the actual open/closed CSS state.
+  const [drawerMounted, setDrawerMounted] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const { loadFromDisk, loaded, settings } = useStore()
   const { online, justReconnected } = useOnlineStatus()
+
+  const openDrawer = () => {
+    setDrawerMounted(true)
+    // Mount closed first, then flip to open on the next frame so the
+    // transition actually has a "from" state to animate away from.
+    requestAnimationFrame(() => requestAnimationFrame(() => setDrawerOpen(true)))
+  }
+  const closeDrawer = () => {
+    setDrawerOpen(false)
+    setTimeout(() => setDrawerMounted(false), DRAWER_TRANSITION_MS)
+  }
 
   useEffect(() => {
     loadFromDisk().then(() => {
@@ -64,11 +80,16 @@ export default function App() {
       <Sidebar currentPage={page} onNavigate={setPage} />
 
       {/* Mobile drawer */}
-      {drawerOpen && (
+      {drawerMounted && (
         <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-          <div className="absolute inset-y-0 left-0 shadow-2xl">
-            <Sidebar mobile currentPage={page} onNavigate={setPage} onClose={() => setDrawerOpen(false)} />
+          <div
+            className={`absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity duration-200 ease-out ${drawerOpen ? 'opacity-100' : 'opacity-0'}`}
+            onClick={closeDrawer}
+          />
+          <div
+            className={`absolute inset-y-0 left-0 shadow-2xl transition-transform duration-200 ease-out ${drawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+          >
+            <Sidebar mobile currentPage={page} onNavigate={setPage} onClose={closeDrawer} />
           </div>
         </div>
       )}
@@ -77,7 +98,7 @@ export default function App() {
         {/* Mobile top bar */}
         <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
           <button
-            onClick={() => setDrawerOpen(true)}
+            onClick={openDrawer}
             className="p-1 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
             aria-label="Open menu"
           >
