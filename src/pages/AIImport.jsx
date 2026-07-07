@@ -381,7 +381,9 @@ function ChatMode({ settings, storeState }) {
       setMessages(messages)
     } finally {
       setLoading(false)
-      inputRef.current?.focus()
+      // Desktop only — auto-refocusing on mobile keeps the iOS keyboard
+      // open permanently, hiding the top bar and trapping the user.
+      if (window.matchMedia('(min-width: 768px)').matches) inputRef.current?.focus()
     }
   }
 
@@ -390,7 +392,7 @@ function ChatMode({ settings, storeState }) {
   const clearChat = () => {
     setMessages([])
     setError('')
-    inputRef.current?.focus()
+    if (window.matchMedia('(min-width: 768px)').matches) inputRef.current?.focus()
   }
 
   return (

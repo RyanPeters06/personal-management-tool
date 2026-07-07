@@ -68,23 +68,47 @@ export default function App() {
   // iOS scrolls the whole window when the on-screen keyboard opens (to keep
   // the focused input visible). With the document locked to overflow:hidden
   // there is no way to scroll back, so the header ends up stuck off-screen
-  // (e.g. after typing in the AI Import textarea). Snap the window back to
-  // the top whenever an input blurs or the keyboard closes.
+  // (e.g. after typing in the Assistant/AI Import textareas). Snap every
+  // scroll offset back to zero whenever the keyboard is not actively holding
+  // an input in view. window.scrollTo alone is not reliable in an installed
+  // iOS PWA — the offset can live on documentElement/body instead, so all
+  // three are reset.
   useEffect(() => {
-    const reset = () => {
-      if (window.scrollY !== 0) window.scrollTo(0, 0)
+    const hardReset = () => {
+      window.scrollTo(0, 0)
+      document.documentElement.scrollTop = 0
+      document.body.scrollTop = 0
     }
-    const onFocusOut = () => setTimeout(reset, 80)
+    const keyboardLikelyOpen = () => {
+      const a = document.activeElement
+      return a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.tagName === 'SELECT' || a.isContentEditable)
+    }
+    const resetIfSafe = () => {
+      if (!keyboardLikelyOpen()) hardReset()
+    }
+    const onFocusOut = () => {
+      // wait for focus to settle (tapping between inputs fires focusout too)
+      setTimeout(resetIfSafe, 80)
+      setTimeout(resetIfSafe, 350) // second pass: iOS keyboard dismiss animation
+    }
     const vv = window.visualViewport
-    const onViewportResize = () => {
-      // Only snap back once the keyboard is gone (viewport back to ~full height)
-      if (vv && vv.height >= window.innerHeight - 60) reset()
+    const onViewportChange = () => {
+      // Snap back once the keyboard is gone (viewport back to ~full height)
+      if (vv && vv.height >= window.innerHeight - 60) resetIfSafe()
+    }
+    // Last-resort recovery: any tap while no input is focused re-anchors the app
+    const onTouchEnd = () => {
+      if (!keyboardLikelyOpen()) setTimeout(resetIfSafe, 50)
     }
     document.addEventListener('focusout', onFocusOut)
-    vv?.addEventListener('resize', onViewportResize)
+    document.addEventListener('touchend', onTouchEnd, { passive: true })
+    vv?.addEventListener('resize', onViewportChange)
+    vv?.addEventListener('scroll', onViewportChange)
     return () => {
       document.removeEventListener('focusout', onFocusOut)
-      vv?.removeEventListener('resize', onViewportResize)
+      document.removeEventListener('touchend', onTouchEnd)
+      vv?.removeEventListener('resize', onViewportChange)
+      vv?.removeEventListener('scroll', onViewportChange)
     }
   }, [])
 
