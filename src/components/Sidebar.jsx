@@ -50,6 +50,7 @@ export default function Sidebar({ currentPage, onNavigate, mobile = false, onClo
           ? 'flex h-full w-64'
           : `hidden md:flex transition-all duration-200 ${collapsed ? 'w-14' : 'w-52'}`
       }`}
+      style={mobile ? { paddingTop: 'env(safe-area-inset-top, 0px)' } : undefined}
     >
       {/* Logo / Title */}
       <div className={`flex items-center px-3 py-4 border-b border-slate-100 dark:border-slate-700 ${collapsed ? 'justify-center' : ''}`}>

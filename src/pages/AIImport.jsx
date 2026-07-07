@@ -394,7 +394,7 @@ function ChatMode({ settings, storeState }) {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-13rem)]">
+    <div className="flex flex-col h-[calc(100dvh-13rem)]">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto space-y-4 pr-1 pb-2">
         {messages.length === 0 && (
