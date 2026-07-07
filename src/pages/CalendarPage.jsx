@@ -36,7 +36,7 @@ function EventForm({ initial, onSave, onCancel }) {
           placeholder="Event title"
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Date</label>
           <input
@@ -105,7 +105,7 @@ function DeadlineForm({ initial, onSave, onCancel }) {
         <input autoFocus className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
           placeholder="e.g. Steam sale ends, Amazon promo expires" value={form.title} onChange={(e) => set('title', e.target.value)} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">End Date</label>
           <input type="date" className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"

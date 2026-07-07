@@ -22,10 +22,10 @@ function ExerciseRow({ exercise, sessionId, onUpdate, onDelete }) {
 
   if (editing) {
     return (
-      <div className="flex items-center gap-2 py-1">
+      <div className="flex flex-wrap items-center gap-2 py-1">
         <input
           autoFocus
-          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
+          className="flex-1 min-w-[160px] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
           value={draft.name}
           onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))}
           placeholder="Exercise name"
@@ -44,7 +44,7 @@ function ExerciseRow({ exercise, sessionId, onUpdate, onDelete }) {
           placeholder="Reps"
         />
         <input
-          className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
+          className="flex-1 min-w-[160px] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
           value={draft.notes}
           onChange={(e) => setDraft((d) => ({ ...d, notes: e.target.value }))}
           placeholder="Notes (optional)"
@@ -97,10 +97,10 @@ function AddExerciseRow({ onAdd }) {
   }
 
   return (
-    <div className="flex items-center gap-2 mt-1">
+    <div className="flex flex-wrap items-center gap-2 mt-1">
       <input
         autoFocus
-        className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+        className="flex-1 min-w-[160px] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
         value={form.name}
         onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
         placeholder="Exercise name"
@@ -119,7 +119,7 @@ function AddExerciseRow({ onAdd }) {
         placeholder="Reps"
       />
       <input
-        className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
+        className="flex-1 min-w-[160px] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
         value={form.notes}
         onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
         placeholder="Notes"

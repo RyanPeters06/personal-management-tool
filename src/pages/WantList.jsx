@@ -8,15 +8,15 @@ import { Plus, Trash2, Pencil, ExternalLink, ShoppingCart, X, Check, RotateCcw }
 
 function OptionRow({ option, onChange, onDelete }) {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <input
-        className="flex-1 border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+        className="flex-1 min-w-[120px] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
         placeholder="Label (e.g. Amazon)"
         value={option.label}
         onChange={(e) => onChange({ ...option, label: e.target.value })}
       />
       <input
-        className="flex-[2] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
+        className="flex-[2] min-w-[140px] border border-slate-200 dark:border-slate-600 rounded-lg px-2.5 py-1.5 text-xs bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
         placeholder="URL"
         value={option.url}
         onChange={(e) => onChange({ ...option, url: e.target.value })}

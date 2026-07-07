@@ -38,7 +38,7 @@ function TaskForm({ initial, onSave, onCancel }) {
           onChange={(e) => set('notes', e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Due Date</label>
           <div className="flex gap-1.5">

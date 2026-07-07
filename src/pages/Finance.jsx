@@ -18,8 +18,8 @@ function SubForm({ initial, onSave, onCancel }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Name</label>
           <input
             autoFocus
@@ -101,7 +101,7 @@ function ExpenseForm({ onSave, onCancel }) {
           onChange={(e) => set('label', e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Amount ($)</label>
           <input
@@ -143,8 +143,8 @@ function MoneyEntryForm({ type, onSave, onCancel }) {
 
   return (
     <div className="space-y-3">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="col-span-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">
             {isOwed ? 'Person' : 'Source'}
           </label>
@@ -178,7 +178,7 @@ function MoneyEntryForm({ type, onSave, onCancel }) {
             onChange={(e) => set(isOwed ? 'dueDate' : 'expectedDate', e.target.value)}
           />
         </div>
-        <div className="col-span-2">
+        <div className="sm:col-span-2">
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Reason / Notes (optional)</label>
           <input
             className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"

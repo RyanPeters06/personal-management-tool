@@ -20,7 +20,7 @@ function GameForm({ initial, onSave, onCancel }) {
         <input autoFocus className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
           value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Game or series name" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Platform</label>
           <select className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
@@ -66,7 +66,7 @@ function SubGameForm({ onSave, onCancel }) {
         <input autoFocus className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
           value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="e.g. Pokémon Red" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Platform (optional)</label>
           <select className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
@@ -103,7 +103,7 @@ function ShowForm({ initial, onSave, onCancel }) {
         <input autoFocus className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none focus:border-slate-400"
           value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Show or movie name" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Where to Watch</label>
           <select className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-100 outline-none"
