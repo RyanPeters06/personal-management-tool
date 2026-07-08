@@ -104,11 +104,21 @@ export default function App() {
     document.addEventListener('touchend', onTouchEnd, { passive: true })
     vv?.addEventListener('resize', onViewportChange)
     vv?.addEventListener('scroll', onViewportChange)
+    // Watchdog: even if every event above is missed, any lingering offset is
+    // cleared within 500ms once the keyboard is closed — the top bar can
+    // never stay stranded off-screen.
+    const watchdog = setInterval(() => {
+      if (!keyboardLikelyOpen() &&
+          (window.scrollY !== 0 || document.documentElement.scrollTop !== 0 || document.body.scrollTop !== 0)) {
+        hardReset()
+      }
+    }, 500)
     return () => {
       document.removeEventListener('focusout', onFocusOut)
       document.removeEventListener('touchend', onTouchEnd)
       vv?.removeEventListener('resize', onViewportChange)
       vv?.removeEventListener('scroll', onViewportChange)
+      clearInterval(watchdog)
     }
   }, [])
 
