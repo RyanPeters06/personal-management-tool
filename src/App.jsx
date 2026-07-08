@@ -153,12 +153,8 @@ export default function App() {
       )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile top bar — padding-top extends its background up under the
-            iPhone status bar / dynamic island so the whole top is one color */}
-        <div
-          className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0"
-          style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 0.75rem)' }}
-        >
+        {/* Mobile top bar */}
+        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
           <button
             onClick={openDrawer}
             className="p-1 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"

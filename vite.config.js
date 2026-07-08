@@ -21,7 +21,7 @@ export default defineConfig({
         name: 'Life Manager',
         short_name: 'Life Manager',
         description: 'Personal life manager — tasks, projects, finance, journal, and more',
-        theme_color: '#0f172a',
+        theme_color: '#ffffff',
         background_color: '#0f172a',
         display: 'standalone',
         start_url: '/',

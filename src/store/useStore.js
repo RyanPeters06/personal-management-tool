@@ -870,12 +870,14 @@ function applyTheme(settings) {
   root.classList.remove('accent-slate', 'accent-sage', 'accent-violet', 'accent-rose')
   root.classList.add(`accent-${settings.accent || 'slate'}`)
 
-  // Keep the browser/PWA chrome (iOS status bar area around the dynamic
-  // island, Android address bar) the same color as the app's top bar so the
-  // very top of the screen doesn't show as a mismatched strip.
+  // Keep the browser/PWA chrome (iOS status bar tint, Android address bar) the
+  // same color as the app's top bar so the top of the screen isn't a mismatched
+  // strip. iOS standalone tints the status bar from theme-color and auto-picks
+  // the clock/battery text color from its luminance.
   const barColor = settings.darkMode ? '#1e293b' : '#ffffff' // slate-800 / white
   const meta = document.querySelector('meta[name="theme-color"]')
   if (meta) meta.setAttribute('content', barColor)
+  root.style.backgroundColor = barColor
 }
 
 export default useStore

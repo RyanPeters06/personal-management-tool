@@ -2,12 +2,26 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#0f172a" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#ffffff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
     <link rel="icon" href="./favicon.ico" sizes="32x32" />
     <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
     <title>Life Manager</title>
+    <script>
+      // Set the status-bar color BEFORE first paint so iOS reads the correct
+      // value at launch (post-load JS updates can be ignored for the status
+      // bar). Mirrors the top bar: white in light mode, slate-800 in dark.
+      (function () {
+        try {
+          var raw = localStorage.getItem('lifeManagerData')
+          var dark = raw ? !!JSON.parse(raw).settings.darkMode : false
+          var color = dark ? '#1e293b' : '#ffffff'
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', color)
+          document.documentElement.style.backgroundColor = color
+        } catch (e) {}
+      })()
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
