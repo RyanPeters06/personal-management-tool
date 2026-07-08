@@ -152,9 +152,12 @@ export default function App() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile top bar */}
-        <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shrink-0">
+      <div className="flex-1 flex flex-col overflow-hidden pt-12 md:pt-0">
+        {/* Mobile top bar — position:fixed pins it to the visible screen no
+            matter how iOS shifts the window (keyboard, URL-bar collapse), so
+            the menu is always reachable. The column above compensates with
+            pt-12. Fixed height h-12 keeps the two in lockstep. */}
+        <div className="md:hidden fixed top-0 inset-x-0 z-40 flex items-center gap-3 px-4 h-12 border-b border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800">
           <button
             onClick={openDrawer}
             className="p-1 -ml-1 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
