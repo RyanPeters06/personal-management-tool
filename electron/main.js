@@ -77,12 +77,69 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow()
 })
 
+// ── Always-on local file backups ─────────────────────────────────────────────
+// Every save also writes rolling backup files under userData/backups, fully
+// independent of the renderer, localStorage, and cloud sync:
+//   latest.json     — updated on every save (mirror of the live data)
+//   last-good.json  — updated only when the data has real content, so an
+//                     accidental wipe/empty sync can never overwrite it
+//   backup-<timestamp>.json — a history point at most every 10 minutes
+//                     (only when meaningful), pruned to the newest 100
+const fs = require('fs')
+
+function hasRealContent(d) {
+  if (!d) return false
+  const counts = [
+    d.tasks?.length, d.projects?.length, d.ideas?.length, d.wantList?.length,
+    d.deadlines?.length, d.goals?.length, d.journal?.entries?.length,
+    d.calendar?.events?.length, d.finance?.subscriptions?.length,
+    d.finance?.expenses?.length, d.finance?.moneyTracker?.owed?.length,
+    d.finance?.moneyTracker?.incoming?.length, d.watchlist?.games?.length,
+    d.watchlist?.shows?.length, d.workouts?.sessions?.length, d.workouts?.logs?.length,
+  ]
+  if ((d.todos?.categories || []).some((c) => (c.tasks?.length || 0) > 0)) return true
+  return counts.some((n) => (n || 0) > 0)
+}
+
+let lastHistoryWrite = 0
+function writeBackups(data) {
+  try {
+    const dir = path.join(app.getPath('userData'), 'backups')
+    fs.mkdirSync(dir, { recursive: true })
+    const json = JSON.stringify(data, null, 2)
+
+    fs.writeFileSync(path.join(dir, 'latest.json'), json)
+
+    if (hasRealContent(data)) {
+      fs.writeFileSync(path.join(dir, 'last-good.json'), json)
+
+      const now = Date.now()
+      if (now - lastHistoryWrite >= 10 * 60 * 1000) {
+        lastHistoryWrite = now
+        const stamp = new Date().toISOString().replace(/[:T]/g, '-').slice(0, 16)
+        fs.writeFileSync(path.join(dir, `backup-${stamp}.json`), json)
+        // prune history to the newest 100 files
+        const history = fs.readdirSync(dir)
+          .filter((f) => f.startsWith('backup-') && f.endsWith('.json'))
+          .sort()
+        history.slice(0, Math.max(0, history.length - 100)).forEach((f) => {
+          try { fs.unlinkSync(path.join(dir, f)) } catch {}
+        })
+      }
+    }
+  } catch (e) {
+    // Backups must never break saving itself
+    console.error('Backup write failed:', e)
+  }
+}
+
 ipcMain.handle('load-data', () => {
   return store.get('lifeManagerData', null)
 })
 
 ipcMain.handle('save-data', (_, data) => {
   store.set('lifeManagerData', data)
+  writeBackups(data)
   return true
 })
 

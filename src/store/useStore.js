@@ -103,10 +103,14 @@ export function serializeData(s) {
   }
 }
 
-// Injection point for the cloud sync layer (src/store/sync.js registers a
-// handler here — keeps useStore free of any sync/supabase imports).
+// Injection points for the cloud sync layer (src/store/sync.js registers
+// handlers here — keeps useStore free of any sync/supabase imports).
 let onLocalSave = null
 export function setOnLocalSave(fn) { onLocalSave = fn }
+// Called when the user EXPLICITLY wipes data, authorizing the sync layer to
+// propagate an empty dataset (otherwise empty pushes are blocked).
+let onExplicitWipe = null
+export function setOnExplicitWipe(fn) { onExplicitWipe = fn }
 
 const useStore = create((set, get) => ({
   ...defaultData,
@@ -834,12 +838,14 @@ const useStore = create((set, get) => ({
 
   // ── WIPE ALL DATA ──
   wipeAllData: () => {
+    onExplicitWipe?.()
     set({ ...defaultData, settings: { ...get().settings }, loaded: true })
     get().save()
   },
 
   // ── WIPE SECTION ──
   wipeSectionData: (section) => {
+    onExplicitWipe?.()
     const s = get()
     const patches = {
       tasks: () => set({ tasks: [] }),
