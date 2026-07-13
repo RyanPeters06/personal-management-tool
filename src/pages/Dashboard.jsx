@@ -3,7 +3,7 @@ import useStore from '../store/useStore'
 import { playCompleteSound } from '../utils/completeSound'
 import { tagColor } from '../components/shared/TagSelect'
 import { format, isToday, isTomorrow, isPast, parseISO, differenceInCalendarDays } from 'date-fns'
-import { Sun, Star, DollarSign, Calendar, Target, AlertCircle, Clock, Check, ShoppingCart, Lightbulb, Layers } from 'lucide-react'
+import { Sun, Star, DollarSign, Calendar, Target, AlertCircle, Clock, Check, ShoppingCart, StickyNote, Layers } from 'lucide-react'
 
 function DashCard({ title, icon: Icon, children, onClick, count }) {
   return (
@@ -133,7 +133,7 @@ export default function Dashboard({ onNavigate }) {
   }, [finance])
 
   const wantCount = (wantList || []).filter((i) => !i.purchased).length
-  const ideaCount = (ideas || []).length
+  const noteCount = (ideas || []).length
   const journaledToday = (journal?.entries || []).some((e) => e.date === todayStr && e.content?.trim())
 
   return (
@@ -311,7 +311,7 @@ export default function Dashboard({ onNavigate }) {
       {/* Row 4: Quick stat tiles */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatTile icon={ShoppingCart} label={wantCount === 1 ? 'item on your want list' : 'items on your want list'} value={wantCount} onClick={() => onNavigate('want-list')} />
-        <StatTile icon={Lightbulb} label={ideaCount === 1 ? 'idea saved' : 'ideas saved'} value={ideaCount} onClick={() => onNavigate('ideas')} />
+        <StatTile icon={StickyNote} label={noteCount === 1 ? 'note saved' : 'notes saved'} value={noteCount} onClick={() => onNavigate('ideas')} />
         <StatTile icon={Sun} label={journaledToday ? 'journaled today' : 'no journal entry today'} value={journaledToday ? '✓' : '—'} onClick={() => onNavigate('journal')} />
       </div>
     </div>

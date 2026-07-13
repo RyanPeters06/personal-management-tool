@@ -8,7 +8,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ShoppingCart,
-  Lightbulb,
+  StickyNote,
   ListTodo,
   Dumbbell,
   Briefcase,
@@ -28,7 +28,7 @@ const NAV = [
   { id: 'library', label: 'Library', icon: Tv },
   { id: 'workouts', label: 'Workouts', icon: Dumbbell },
   { id: 'want-list', label: 'Want List', icon: ShoppingCart },
-  { id: 'ideas', label: 'Ideas', icon: Lightbulb },
+  { id: 'ideas', label: 'Notes', icon: StickyNote },
   { id: 'journal', label: 'Journal', icon: BookOpen },
   { id: 'assistant', label: 'Assistant', icon: Sparkles },
 ]

@@ -739,7 +739,9 @@ const useStore = create((set, get) => ({
 
   // ── IDEAS ──
   addIdea: (idea) => {
-    const item = { id: generateId(), title: idea.title, description: idea.description || '', category: idea.category || 'other', status: idea.status || 'raw', tags: idea.tags || [], createdAt: new Date().toISOString() }
+    // noteType splits the Notes page into "general" notes and "idea" notes.
+    // Existing items (no noteType) are treated as ideas.
+    const item = { id: generateId(), title: idea.title, description: idea.description || '', noteType: idea.noteType || 'idea', category: idea.category || 'other', status: idea.status || 'raw', tags: idea.tags || [], createdAt: new Date().toISOString() }
     set((s) => ({ ideas: [...s.ideas, item] }))
     get().save()
   },

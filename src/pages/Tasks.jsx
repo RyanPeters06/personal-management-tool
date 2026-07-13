@@ -13,8 +13,10 @@ const PRIORITY_COLORS = { high: 'red', medium: 'yellow', none: 'slate' }
 
 // The focus flag is stored on tasks/subtasks as `today` (kept for backward
 // compatibility with existing data), but it's a pure "prioritized" flag with
-// no date attached — so a prioritized task never becomes overdue.
-const FILTER_LABELS = { priority: 'Priority', active: 'Active', done: 'Done', all: 'All' }
+// no date attached — so a prioritized task never becomes overdue. Prioritized
+// tasks surface in their own group at the top of the Active view rather than
+// in a separate tab.
+const FILTER_LABELS = { active: 'Active', done: 'Done', all: 'All' }
 
 function TaskForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(
@@ -97,7 +99,7 @@ export default function Tasks({ onNavigate }) {
   const customTagColors = settings.customTagColors || {}
   const [filter, setFilter] = useState('active')
   const [tagFilter, setTagFilter] = useState('all')
-  const [showProjects, setShowProjects] = useState(true)
+  const [showProjects, setShowProjects] = useState(false)
   const [planToday, setPlanToday] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [editTask, setEditTask] = useState(null)
@@ -148,7 +150,6 @@ export default function Tasks({ onNavigate }) {
       .filter((proj) => tagFilter === 'all' || proj.tag === tagFilter)
       .map((proj) => {
         const subtasks = (proj.subtasks || []).filter((st) => {
-          if (filter === 'priority') return st.today && !st.done
           if (filter === 'active') return !st.done
           if (filter === 'done') return st.done
           return true
@@ -162,7 +163,6 @@ export default function Tasks({ onNavigate }) {
     .filter((t) => {
       if (tagFilter !== 'all' && !(t.tags || []).includes(tagFilter)) return false
       if (completing.has(t.id)) return true // always show animating tasks
-      if (filter === 'priority') return t.today && !t.done
       if (filter === 'active') return !t.done
       if (filter === 'done') return t.done
       return true
@@ -174,11 +174,67 @@ export default function Tasks({ onNavigate }) {
       return ap - bp
     })
 
+  // Prioritized (starred, not done) tasks surface in their own group at the
+  // top; everything else falls into the regular list below.
+  const priorityStandalone = filter === 'done'
+    ? []
+    : filteredStandalone.filter((t) => t.today && !t.done)
+  const regularStandalone = filteredStandalone.filter((t) => !priorityStandalone.includes(t))
+
   // Items available to flag for "today" (active, not done)
   const planStandalone = tasks.filter((t) => !t.done)
   const planProjects = projects
     .map((proj) => ({ proj, subtasks: (proj.subtasks || []).filter((st) => !st.done) }))
     .filter(({ subtasks }) => subtasks.length > 0)
+
+  const renderTaskRow = (task) => {
+    const overdue = task.dueDate && !task.done && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate))
+    const isCompleting = completing.has(task.id)
+    return (
+      <div
+        key={task.id}
+        className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-start gap-3 group ${isCompleting ? 'task-row-completing' : ''}`}
+      >
+        <button
+          onClick={() => handleCheck(task)}
+          className={`mt-0.5 w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
+            task.done || isCompleting ? 'border-transparent' : 'border-slate-300 dark:border-slate-500'
+          }`}
+          style={task.done || isCompleting ? { backgroundColor: 'var(--accent-500)' } : {}}
+        >
+          {(task.done || isCompleting) && (
+            <Check size={10} className={`text-white ${isCompleting ? 'task-check-pop' : ''}`} />
+          )}
+        </button>
+        <div className="flex-1 min-w-0">
+          <p className={`text-sm ${task.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
+          {task.notes && <p className="text-xs text-slate-400 mt-0.5">{task.notes}</p>}
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            {task.priority && task.priority !== 'none' && <Badge label={task.priority} color={PRIORITY_COLORS[task.priority]} />}
+            {task.dueDate && (
+              <span className={`text-xs ${overdue ? 'text-red-500' : 'text-slate-400'}`}>
+                {overdue ? 'Overdue · ' : ''}{format(parseISO(task.dueDate), 'MMM d')}
+              </span>
+            )}
+            {task.tags?.map((t) => (
+              <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t, customTagColors)}`}>{t}</span>
+            ))}
+          </div>
+        </div>
+        <div className="flex gap-1 items-center">
+          <button
+            onClick={() => updateTask2(task.id, { today: !task.today })}
+            className={`p-1 transition-colors ${task.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-amber-500'}`}
+            title={task.today ? 'Remove priority' : 'Prioritize'}
+          >
+            <Star size={13} className={task.today ? 'fill-current' : ''} />
+          </button>
+          <button onClick={() => setEditTask(task)} className="p-1 text-slate-400 hover:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Pencil size={13} /></button>
+          <button onClick={() => deleteTask2(task.id)} className="p-1 text-slate-400 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={13} /></button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -201,7 +257,7 @@ export default function Tasks({ onNavigate }) {
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-1 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 w-fit">
-            {['priority', 'active', 'done', 'all'].map((f) => (
+            {['active', 'done', 'all'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
@@ -237,59 +293,24 @@ export default function Tasks({ onNavigate }) {
         </label>
       </div>
 
-      {/* Standalone tasks */}
-      {filteredStandalone.length > 0 && (
+      {/* Priority group — starred tasks float to the top */}
+      {priorityStandalone.length > 0 && (
+        <div className="mb-6">
+          <p className="text-xs font-semibold uppercase tracking-wide mb-2 flex items-center gap-1.5 text-amber-500">
+            <Star size={12} className="fill-current" /> Priority
+          </p>
+          <div className="space-y-2">
+            {priorityStandalone.map(renderTaskRow)}
+          </div>
+        </div>
+      )}
+
+      {/* Regular standalone tasks */}
+      {regularStandalone.length > 0 && (
         <div className="mb-6">
           <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Quick Tasks</p>
           <div className="space-y-2">
-            {filteredStandalone.map((task) => {
-              const overdue = task.dueDate && !task.done && isPast(parseISO(task.dueDate)) && !isToday(parseISO(task.dueDate))
-              const isCompleting = completing.has(task.id)
-              return (
-                <div
-                  key={task.id}
-                  className={`bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3 flex items-start gap-3 group ${isCompleting ? 'task-row-completing' : ''}`}
-                >
-                  <button
-                    onClick={() => handleCheck(task)}
-                    className={`mt-0.5 w-4 h-4 rounded border-2 shrink-0 flex items-center justify-center transition-colors ${
-                      task.done || isCompleting ? 'border-transparent' : 'border-slate-300 dark:border-slate-500'
-                    }`}
-                    style={task.done || isCompleting ? { backgroundColor: 'var(--accent-500)' } : {}}
-                  >
-                    {(task.done || isCompleting) && (
-                      <Check size={10} className={`text-white ${isCompleting ? 'task-check-pop' : ''}`} />
-                    )}
-                  </button>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${task.done ? 'line-through text-slate-400' : 'text-slate-700 dark:text-slate-200'}`}>{task.title}</p>
-                    {task.notes && <p className="text-xs text-slate-400 mt-0.5">{task.notes}</p>}
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {task.priority !== 'none' && <Badge color={PRIORITY_COLORS[task.priority]}>{task.priority}</Badge>}
-                      {task.dueDate && (
-                        <span className={`text-xs ${overdue ? 'text-red-500' : 'text-slate-400'}`}>
-                          {overdue ? 'Overdue · ' : ''}{format(parseISO(task.dueDate), 'MMM d')}
-                        </span>
-                      )}
-                      {task.tags?.map((t) => (
-                        <span key={t} className={`text-xs px-1.5 py-0.5 rounded-full ${tagColor(t, customTagColors)}`}>{t}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div className="flex gap-1 items-center">
-                    <button
-                      onClick={() => updateTask2(task.id, { today: !task.today })}
-                      className={`p-1 transition-colors ${task.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-amber-500'}`}
-                      title={task.today ? 'Remove priority' : 'Prioritize'}
-                    >
-                      <Star size={13} className={task.today ? 'fill-current' : ''} />
-                    </button>
-                    <button onClick={() => setEditTask(task)} className="p-1 text-slate-400 hover:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Pencil size={13} /></button>
-                    <button onClick={() => deleteTask2(task.id)} className="p-1 text-slate-400 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={13} /></button>
-                  </div>
-                </div>
-              )
-            })}
+            {regularStandalone.map(renderTaskRow)}
           </div>
         </div>
       )}
@@ -356,7 +377,6 @@ export default function Tasks({ onNavigate }) {
       {filteredStandalone.length === 0 && projectGroups.length === 0 && (
         <p className="text-sm text-slate-400 italic text-center py-12">
           {filter === 'done' ? 'No completed tasks yet.'
-            : filter === 'priority' ? 'Nothing prioritized yet — tap the star on a task, or use "Prioritize" to pick several.'
             : 'No tasks — add one above.'}
         </p>
       )}
@@ -382,7 +402,7 @@ export default function Tasks({ onNavigate }) {
 
       {planToday && (
         <Modal title="Prioritize Tasks" onClose={() => setPlanToday(false)}>
-          <p className="text-xs text-slate-400 mb-3">Check the tasks you want to prioritize. They'll show up under the <span className="font-medium text-amber-500">Priority</span> tab — with no due date, so they never go overdue.</p>
+          <p className="text-xs text-slate-400 mb-3">Check the tasks you want to prioritize. They'll rise to a <span className="font-medium text-amber-500">Priority</span> group at the top of your task list — with no due date, so they never go overdue.</p>
           <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
             {planStandalone.length === 0 && planProjects.length === 0 && (
               <p className="text-sm text-slate-400 italic text-center py-6">No active tasks to plan.</p>
@@ -429,7 +449,7 @@ export default function Tasks({ onNavigate }) {
             ))}
           </div>
           <div className="flex justify-end mt-4">
-            <Button onClick={() => { setPlanToday(false); setFilter('priority') }}>
+            <Button onClick={() => { setPlanToday(false); setFilter('active') }}>
               <Check size={14} /> Done
             </Button>
           </div>

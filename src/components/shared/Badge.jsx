@@ -9,10 +9,13 @@ const COLOR_MAP = {
   slate: 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300',
 }
 
-export default function Badge({ label, color = 'slate' }) {
+export default function Badge({ label, color = 'slate', children }) {
+  const content = label ?? children
+  // Render nothing rather than an empty pill when there's no content
+  if (content == null || content === '') return null
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${COLOR_MAP[color] || COLOR_MAP.slate}`}>
-      {label}
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium capitalize ${COLOR_MAP[color] || COLOR_MAP.slate}`}>
+      {content}
     </span>
   )
 }
