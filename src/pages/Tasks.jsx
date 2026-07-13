@@ -6,10 +6,15 @@ import Button from '../components/shared/Button'
 import Modal from '../components/shared/Modal'
 import Badge from '../components/shared/Badge'
 import TagSelect, { tagColor } from '../components/shared/TagSelect'
-import { Plus, Trash2, Pencil, Check, Layers, ChevronRight, ChevronDown, Sun } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, Layers, ChevronRight, ChevronDown, Star } from 'lucide-react'
 import { format, parseISO, isPast, isToday } from 'date-fns'
 
 const PRIORITY_COLORS = { high: 'red', medium: 'yellow', none: 'slate' }
+
+// The focus flag is stored on tasks/subtasks as `today` (kept for backward
+// compatibility with existing data), but it's a pure "prioritized" flag with
+// no date attached — so a prioritized task never becomes overdue.
+const FILTER_LABELS = { priority: 'Priority', active: 'Active', done: 'Done', all: 'All' }
 
 function TaskForm({ initial, onSave, onCancel }) {
   const [form, setForm] = useState(
@@ -40,23 +45,13 @@ function TaskForm({ initial, onSave, onCancel }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
-          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Due Date</label>
-          <div className="flex gap-1.5">
-            <input
-              type="date"
-              className="flex-1 min-w-0 border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
-              value={form.dueDate}
-              onChange={(e) => set('dueDate', e.target.value)}
-            />
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, dueDate: format(new Date(), 'yyyy-MM-dd'), today: true }))}
-              className="px-2.5 rounded-lg text-xs font-medium border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors shrink-0"
-              title="Set due today and add to Today's focus"
-            >
-              Today
-            </button>
-          </div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Due Date (optional)</label>
+          <input
+            type="date"
+            className="w-full border border-slate-200 dark:border-slate-600 rounded-lg px-3 py-2 text-sm bg-transparent text-slate-800 dark:text-slate-100 outline-none"
+            value={form.dueDate}
+            onChange={(e) => set('dueDate', e.target.value)}
+          />
         </div>
         <div>
           <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Priority</label>
@@ -84,7 +79,7 @@ function TaskForm({ initial, onSave, onCancel }) {
             : 'border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
         }`}
       >
-        <Sun size={14} /> {form.today ? "In Today's focus" : "Add to Today's focus"}
+        <Star size={14} className={form.today ? 'fill-current' : ''} /> {form.today ? 'Prioritized' : 'Prioritize'}
       </button>
       <div className="flex justify-end gap-2">
         <Button variant="secondary" onClick={onCancel}>Cancel</Button>
@@ -153,7 +148,7 @@ export default function Tasks({ onNavigate }) {
       .filter((proj) => tagFilter === 'all' || proj.tag === tagFilter)
       .map((proj) => {
         const subtasks = (proj.subtasks || []).filter((st) => {
-          if (filter === 'today') return st.today && !st.done
+          if (filter === 'priority') return st.today && !st.done
           if (filter === 'active') return !st.done
           if (filter === 'done') return st.done
           return true
@@ -167,7 +162,7 @@ export default function Tasks({ onNavigate }) {
     .filter((t) => {
       if (tagFilter !== 'all' && !(t.tags || []).includes(tagFilter)) return false
       if (completing.has(t.id)) return true // always show animating tasks
-      if (filter === 'today') return t.today && !t.done
+      if (filter === 'priority') return t.today && !t.done
       if (filter === 'active') return !t.done
       if (filter === 'done') return t.done
       return true
@@ -193,7 +188,7 @@ export default function Tasks({ onNavigate }) {
         action={
           <div className="flex gap-2">
             <Button variant="secondary" onClick={() => setPlanToday(true)}>
-              <Sun size={14} /> Plan Today
+              <Star size={14} /> Prioritize
             </Button>
             <Button onClick={() => setShowAdd(true)}>
               <Plus size={14} /> Add Task
@@ -206,16 +201,16 @@ export default function Tasks({ onNavigate }) {
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex gap-1 border border-slate-200 dark:border-slate-700 rounded-lg p-0.5 w-fit">
-            {['today', 'active', 'done', 'all'].map((f) => (
+            {['priority', 'active', 'done', 'all'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors ${
+                className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                   filter === f ? 'text-white' : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
                 }`}
                 style={filter === f ? { backgroundColor: 'var(--accent-500)' } : {}}
               >
-                {f}
+                {FILTER_LABELS[f]}
               </button>
             ))}
           </div>
@@ -285,9 +280,9 @@ export default function Tasks({ onNavigate }) {
                     <button
                       onClick={() => updateTask2(task.id, { today: !task.today })}
                       className={`p-1 transition-colors ${task.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-amber-500'}`}
-                      title={task.today ? 'Remove from today' : 'Add to today'}
+                      title={task.today ? 'Remove priority' : 'Prioritize'}
                     >
-                      <Sun size={13} />
+                      <Star size={13} className={task.today ? 'fill-current' : ''} />
                     </button>
                     <button onClick={() => setEditTask(task)} className="p-1 text-slate-400 hover:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Pencil size={13} /></button>
                     <button onClick={() => deleteTask2(task.id)} className="p-1 text-slate-400 hover:text-red-500 opacity-100 md:opacity-0 md:group-hover:opacity-100"><Trash2 size={13} /></button>
@@ -344,9 +339,9 @@ export default function Tasks({ onNavigate }) {
                         <button
                           onClick={() => toggleSubtaskToday(proj.id, st.id)}
                           className={`p-1 shrink-0 transition-colors ${st.today ? 'text-amber-500' : 'text-slate-300 dark:text-slate-600 opacity-100 md:opacity-0 md:group-hover:opacity-100 hover:text-amber-500'}`}
-                          title={st.today ? 'Remove from today' : 'Add to today'}
+                          title={st.today ? 'Remove priority' : 'Prioritize'}
                         >
-                          <Sun size={13} />
+                          <Star size={13} className={st.today ? 'fill-current' : ''} />
                         </button>
                       </div>
                     ))}
@@ -361,7 +356,7 @@ export default function Tasks({ onNavigate }) {
       {filteredStandalone.length === 0 && projectGroups.length === 0 && (
         <p className="text-sm text-slate-400 italic text-center py-12">
           {filter === 'done' ? 'No completed tasks yet.'
-            : filter === 'today' ? 'Nothing planned for today yet — click "Plan Today" to pick tasks.'
+            : filter === 'priority' ? 'Nothing prioritized yet — tap the star on a task, or use "Prioritize" to pick several.'
             : 'No tasks — add one above.'}
         </p>
       )}
@@ -386,8 +381,8 @@ export default function Tasks({ onNavigate }) {
       )}
 
       {planToday && (
-        <Modal title="Plan Today" onClose={() => setPlanToday(false)}>
-          <p className="text-xs text-slate-400 mb-3">Check the tasks you want to focus on today. They'll show up under the <span className="font-medium text-amber-500">Today</span> tab.</p>
+        <Modal title="Prioritize Tasks" onClose={() => setPlanToday(false)}>
+          <p className="text-xs text-slate-400 mb-3">Check the tasks you want to prioritize. They'll show up under the <span className="font-medium text-amber-500">Priority</span> tab — with no due date, so they never go overdue.</p>
           <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
             {planStandalone.length === 0 && planProjects.length === 0 && (
               <p className="text-sm text-slate-400 italic text-center py-6">No active tasks to plan.</p>
@@ -434,7 +429,7 @@ export default function Tasks({ onNavigate }) {
             ))}
           </div>
           <div className="flex justify-end mt-4">
-            <Button onClick={() => { setPlanToday(false); setFilter('today') }}>
+            <Button onClick={() => { setPlanToday(false); setFilter('priority') }}>
               <Check size={14} /> Done
             </Button>
           </div>

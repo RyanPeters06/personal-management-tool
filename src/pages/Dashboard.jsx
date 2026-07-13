@@ -3,7 +3,7 @@ import useStore from '../store/useStore'
 import { playCompleteSound } from '../utils/completeSound'
 import { tagColor } from '../components/shared/TagSelect'
 import { format, isToday, isTomorrow, isPast, parseISO, differenceInCalendarDays } from 'date-fns'
-import { Sun, DollarSign, Calendar, Target, AlertCircle, Clock, Check, ShoppingCart, Lightbulb, Layers } from 'lucide-react'
+import { Sun, Star, DollarSign, Calendar, Target, AlertCircle, Clock, Check, ShoppingCart, Lightbulb, Layers } from 'lucide-react'
 
 function DashCard({ title, icon: Icon, children, onClick, count }) {
   return (
@@ -145,11 +145,11 @@ export default function Dashboard({ onNavigate }) {
         <p className="text-sm text-slate-400 mt-0.5">Here's what's on your plate</p>
       </div>
 
-      {/* Row 1: Today's Focus + Calendar */}
+      {/* Row 1: Priorities + Calendar */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <DashCard title="Today's Focus" icon={Sun} onClick={() => onNavigate('tasks')} count={todayFocus.length}>
+        <DashCard title="Priorities" icon={Star} onClick={() => onNavigate('tasks')} count={todayFocus.length}>
           {todayFocus.length === 0 ? (
-            <EmptyState label="Nothing marked for today — plan your day in Tasks." />
+            <EmptyState label="Nothing prioritized — star tasks in Tasks to focus on them." />
           ) : (
             <div className="space-y-1.5">
               {todayFocus.map((item) => (
