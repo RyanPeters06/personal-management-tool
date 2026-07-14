@@ -1,5 +1,6 @@
 ﻿import { useState, useRef, useEffect, Component } from 'react'
 import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { callAnthropic, hasAIAccess } from '../lib/anthropic'
 import useStore from '../store/useStore'
 import PageHeader from '../components/shared/PageHeader'
@@ -312,23 +313,36 @@ class SafeMarkdown extends Component {
   static getDerivedStateFromError() { return { crashed: true } }
   render() {
     if (this.state.crashed) return <p className="text-sm whitespace-pre-wrap">{this.props.content}</p>
+    // NOTE: react-markdown v9+ removed the `className` prop — passing it throws
+    // and trips the error boundary, which is why raw markdown (#, *) used to
+    // show. Wrap in a div for styling instead.
     return (
-      <ReactMarkdown
-        className="prose prose-sm dark:prose-invert max-w-none"
-        components={{
-          p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
-          ul: ({ children }) => <ul className="mb-2 pl-4 space-y-0.5 list-disc">{children}</ul>,
-          ol: ({ children }) => <ol className="mb-2 pl-4 space-y-0.5 list-decimal">{children}</ol>,
-          li: ({ children }) => <li className="text-sm">{children}</li>,
-          h1: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
-          h2: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
-          h3: ({ children }) => <p className="font-semibold text-sm mt-2 mb-1">{children}</p>,
-          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
-          code: ({ children }) => <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{children}</code>,
-        }}
-      >
-        {this.props.content}
-      </ReactMarkdown>
+      <div className="text-sm max-w-none">
+        <ReactMarkdown
+          remarkPlugins={[remarkGfm]}
+          components={{
+            p: ({ children }) => <p className="mb-2 last:mb-0 leading-relaxed">{children}</p>,
+            ul: ({ children }) => <ul className="mb-2 pl-5 space-y-0.5 list-disc">{children}</ul>,
+            ol: ({ children }) => <ol className="mb-2 pl-5 space-y-0.5 list-decimal">{children}</ol>,
+            li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+            h1: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
+            h2: ({ children }) => <p className="font-semibold text-sm mt-3 mb-1">{children}</p>,
+            h3: ({ children }) => <p className="font-semibold text-sm mt-2 mb-1">{children}</p>,
+            strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+            em: ({ children }) => <em className="italic">{children}</em>,
+            a: ({ children, href }) => <a href={href} target="_blank" rel="noreferrer" className="underline" style={{ color: 'var(--accent-500)' }}>{children}</a>,
+            code: ({ children }) => <code className="bg-slate-100 dark:bg-slate-700 px-1 rounded text-xs">{children}</code>,
+            blockquote: ({ children }) => <blockquote className="border-l-2 border-slate-300 dark:border-slate-600 pl-3 italic text-slate-500 dark:text-slate-400">{children}</blockquote>,
+            del: ({ children }) => <del className="opacity-60">{children}</del>,
+            hr: () => <hr className="my-3 border-slate-200 dark:border-slate-700" />,
+            table: ({ children }) => <div className="overflow-x-auto my-2"><table className="text-xs border-collapse">{children}</table></div>,
+            th: ({ children }) => <th className="border border-slate-200 dark:border-slate-600 px-2 py-1 text-left font-semibold">{children}</th>,
+            td: ({ children }) => <td className="border border-slate-200 dark:border-slate-600 px-2 py-1">{children}</td>,
+          }}
+        >
+          {this.props.content}
+        </ReactMarkdown>
+      </div>
     )
   }
 }
